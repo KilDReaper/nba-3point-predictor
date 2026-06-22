@@ -1,0 +1,20 @@
+2026-06-23 01:13:27,120 | INFO | nba_3point_train | Loading dataset
+2026-06-23 01:13:36,939 | INFO | nba_3point_train | Loading dataset
+2026-06-23 01:14:03,468 | INFO | nba_3point_train | Loading dataset
+2026-06-23 01:14:16,223 | INFO | nba_3point_train | Loading dataset
+2026-06-23 01:14:39,895 | INFO | nba_3point_train | Loading dataset
+2026-06-23 01:14:40,007 | INFO | nba_3point_train | Training Logistic Regression
+2026-06-23 01:15:11,063 | INFO | nba_3point_train | Loading dataset
+2026-06-23 01:15:11,143 | INFO | nba_3point_train | Training Logistic Regression
+2026-06-23 01:34:15,574 | INFO | nba_3point_train | Loading dataset
+2026-06-23 01:34:40,039 | INFO | nba_3point_train | Loading dataset
+2026-06-23 01:35:01,918 | INFO | nba_3point_train | Loading dataset
+2026-06-23 01:35:02,205 | INFO | nba_3point_train | Training Logistic Regression
+2026-06-23 01:35:02,292 | INFO | nba_3point_train | Training Random Forest
+2026-06-23 01:35:03,574 | INFO | nba_3point_train | Training XGBoost
+2026-06-23 01:35:24,498 | INFO | nba_3point_train | Loading dataset
+2026-06-23 01:35:24,676 | INFO | nba_3point_train | Training Logistic Regression
+2026-06-23 01:35:24,757 | INFO | nba_3point_train | Training Random Forest
+2026-06-23 01:35:26,196 | INFO | nba_3point_train | Training XGBoost
+2026-06-23 01:35:31,259 | INFO | nba_3point_train | Saved model report to C:\Users\aayam\Documents\nba-3point-predictor\ml\outputs\reports\model_report.txt
+2026-06-23 01:35:31,260 | INFO | nba_3point_train | Best model selected: XGBoost

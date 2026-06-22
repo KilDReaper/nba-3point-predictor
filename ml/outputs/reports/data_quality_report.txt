@@ -1,0 +1,75 @@
+NBA 3-Point Shot Data Quality Report
+
+Rows before cleaning: 4266
+Rows after cleaning: 904
+Duplicates removed: 0
+
+Class distribution:
+- 1: 512
+- 0: 392
+
+Missing values before cleaning:
+- ACTION_TYPE: 0
+- GAME_EVENT_ID: 0
+- GAME_ID: 0
+- GRID_TYPE: 0
+- HTM: 0
+- PLAYER_ID: 0
+- SHOT_TYPE: 0
+- SHOT_ZONE_AREA: 0
+- SHOT_ZONE_RANGE: 0
+- TEAM_ID: 0
+- VTM: 0
+- defenderDistance: 4266
+- dribbles: 4266
+- eventType: 0
+- gameDate: 0
+- locationX: 0
+- locationY: 0
+- minutesRemaining: 0
+- period: 0
+- playerName: 0
+- season: 0
+- secondsRemaining: 0
+- shotAttempted: 0
+- shotClock: 4266
+- shotDistance: 0
+- shotMade: 0
+- shotZone: 0
+- team: 0
+- touchTime: 4266
+
+Missing values after cleaning:
+- ACTION_TYPE: 0
+- GAME_EVENT_ID: 0
+- GAME_ID: 0
+- GRID_TYPE: 0
+- HTM: 0
+- PLAYER_ID: 0
+- SHOT_TYPE: 0
+- SHOT_ZONE_AREA: 0
+- SHOT_ZONE_RANGE: 0
+- TEAM_ID: 0
+- VTM: 0
+- cornerThree: 0
+- courtDistance: 0
+- defenderDistance: 904
+- dribbles: 904
+- eventType: 0
+- gameDate: 0
+- gameTimeRemaining: 0
+- lateGameShot: 0
+- locationX: 0
+- locationY: 0
+- minutesRemaining: 0
+- period: 0
+- playerName: 0
+- season: 0
+- secondsRemaining: 0
+- shotAttempted: 0
+- shotClock: 904
+- shotDistance: 0
+- shotMade: 0
+- shotZone: 0
+- team: 0
+- touchTime: 904

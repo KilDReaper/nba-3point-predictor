@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBA 3-Point Shot Predictor</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        @media (max-width: 900px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        .card h2 {
+            color: #1e3c72;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #2a5298;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(42, 82, 152, 0.4);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .prediction-result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .prediction-result.made {
+            background: #e8f5e9;
+            border: 2px solid #4caf50;
+            color: #2e7d32;
+        }
+        .prediction-result.missed {
+            background: #ffebee;
+            border: 2px solid #f44336;
+            color: #c62828;
+        }
+        .prediction-result h3 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .probability-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+        .probability-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #f44336 0%, #ff9800 50%, #4caf50 100%);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .model-info {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .model-info h3 {
+            color: #1e3c72;
+            margin-bottom: 15px;
+        }
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .metric:last-child {
+            border-bottom: none;
+        }
+        .metric-value {
+            font-weight: 600;
+            color: #2a5298;
+        }
+        .file-upload {
+            border: 2px dashed #2a5298;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .file-upload:hover {
+            background: #f5f5f5;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #2a5298;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const API_URL = 'http://localhost:8000';
+
+        function App() {
+            const [activeTab, setActiveTab] = React.useState('single');
+            const [formData, setFormData] = React.useState({
+                shotDistance: 25,
+                shotZone: 'Above the Break 3',
+                period: 2,
+                minutesRemaining: 5,
+                secondsRemaining: 30,
+                shotClock: 10,
+                defenderDistance: 5,
+                dribbles: 2,
+                touchTime: 1.5,
+                locationX: 50,
+                locationY: 250,
+            });
+            const [prediction, setPrediction] = React.useState(null);
+            const [loading, setLoading] = React.useState(false);
+            const [error, setError] = React.useState(null);
+            const [modelInfo, setModelInfo] = React.useState(null);
+            const [batchResults, setBatchResults] = React.useState(null);
+
+            React.useEffect(() => {
+                fetchModelInfo();
+            }, []);
+
+            const fetchModelInfo = async () => {
+                try {
+                    const res = await fetch(`${API_URL}/model-info`);
+                    const data = await res.json();
+                    setModelInfo(data);
+                } catch (err) {
+                    console.error('Error fetching model info:', err);
+                }
+            };
+
+            const handleInputChange = (e) => {
+                const { name, value } = e.target;
+                setFormData(prev => ({
+                    ...prev,
+                    [name]: parseFloat(value) || value
+                }));
+            };
+
+            const handlePredict = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+                setError(null);
+                setPrediction(null);
+
+                try {
+                    const res = await fetch(`${API_URL}/predict`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formData)
+                    });
+
+                    if (!res.ok) throw new Error('Prediction failed');
+                    const data = await res.json();
+                    setPrediction(data);
+                } catch (err) {
+                    setError(err.message);
+                }
+                finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleBatchUpload = async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+
+                setLoading(true);
+                setError(null);
+                setBatchResults(null);
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const res = await fetch(`${API_URL}/predict-batch`, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!res.ok) throw new Error('Batch prediction failed');
+                    const data = await res.json();
+                    setBatchResults(data);
+                } catch (err) {
+                    setError(err.message);
+                }
+                finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="container">
+                    <header>
+                        <h1>🏀 NBA 3-Point Shot Predictor</h1>
+                        <p>AI-powered prediction of 3-point shot success</p>
+                    </header>
+
+                    <div style={{ marginBottom: '30px', textAlign: 'center' }}>
+                        <button 
+                            onClick={() => setActiveTab('single')}
+                            style={{
+                                width: 'auto',
+                                padding: '10px 30px',
+                                marginRight: '10px',
+                                opacity: activeTab === 'single' ? 1 : 0.6
+                            }}
+                        >
+                            Single Prediction
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('batch')}
+                            style={{
+                                width: 'auto',
+                                padding: '10px 30px',
+                                opacity: activeTab === 'batch' ? 1 : 0.6
+                            }}
+                        >
+                            Batch Upload
+                        </button>
+                    </div>
+
+                    <div className="content">
+                        {/* Left Panel - Model Info */}
+                        <div className="card">
+                            <h2>Model Performance</h2>
+                            {modelInfo && (
+                                <div className="model-info">
+                                    <h3>XGBoost Classifier</h3>
+                                    <div className="metric">
+                                        <span>Accuracy</span>
+                                        <span className="metric-value">{(modelInfo.accuracy * 100).toFixed(1)}%</span>
+                                    </div>
+                                    <div className="metric">
+                                        <span>F1 Score</span>
+                                        <span className="metric-value">{(modelInfo.f1_score * 100).toFixed(1)}%</span>
+                                    </div>
+                                    <div className="metric">
+                                        <span>ROC-AUC</span>
+                                        <span className="metric-value">{(modelInfo.roc_auc * 100).toFixed(1)}%</span>
+                                    </div>
+                                    <div className="metric">
+                                        <span>Training Rows</span>
+                                        <span className="metric-value">{modelInfo.training_rows}</span>
+                                    </div>
+                                    <div className="metric">
+                                        <span>Positive Rate</span>
+                                        <span className="metric-value">{(modelInfo.positive_rate * 100).toFixed(1)}%</span>
+                                    </div>
+                                </div>
+                            )}
+                            <div style={{ marginTop: '20px', fontSize: '0.9em', color: '#666' }}>
+                                <p>This model was trained on 904 NBA 3-point shots across 3 players (Stephen Curry, Klay Thompson, Damian Lillard) over 2 seasons (2022-23, 2023-24).</p>
+                            </div>
+                        </div>
+
+                        {/* Right Panel - Prediction */}
+                        <div className="card">
+                            {activeTab === 'single' && (
+                                <>
+                                    <h2>Single Shot Prediction</h2>
+                                    <form onSubmit={handlePredict}>
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label>Shot Distance (ft)</label>
+                                                <input type="number" name="shotDistance" value={formData.shotDistance} onChange={handleInputChange} step="0.1" />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Shot Zone</label>
+                                                <select name="shotZone" value={formData.shotZone} onChange={handleInputChange}>
+                                                    <option>Above the Break 3</option>
+                                                    <option>Left Corner 3</option>
+                                                    <option>Right Corner 3</option>
+                                                    <option>Backcourt</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label>Period</label>
+                                                <input type="number" name="period" value={formData.period} onChange={handleInputChange} min="1" max="4" />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Minutes Remaining</label>
+                                                <input type="number" name="minutesRemaining" value={formData.minutesRemaining} onChange={handleInputChange} step="0.1" />
+                                            </div>
+                                        </div>
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label>Seconds Remaining</label>
+                                                <input type="number" name="secondsRemaining" value={formData.secondsRemaining} onChange={handleInputChange} min="0" max="59" />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Shot Clock (s)</label>
+                                                <input type="number" name="shotClock" value={formData.shotClock} onChange={handleInputChange} step="0.1" />
+                                            </div>
+                                        </div>
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label>Defender Distance (ft)</label>
+                                                <input type="number" name="defenderDistance" value={formData.defenderDistance} onChange={handleInputChange} step="0.1" />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Dribbles</label>
+                                                <input type="number" name="dribbles" value={formData.dribbles} onChange={handleInputChange} step="0.1" />
+                                            </div>
+                                        </div>
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label>Touch Time (s)</label>
+                                                <input type="number" name="touchTime" value={formData.touchTime} onChange={handleInputChange} step="0.1" />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Location X</label>
+                                                <input type="number" name="locationX" value={formData.locationX} onChange={handleInputChange} step="0.1" />
+                                            </div>
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Location Y</label>
+                                            <input type="number" name="locationY" value={formData.locationY} onChange={handleInputChange} step="0.1" />
+                                        </div>
+                                        <button type="submit" disabled={loading}>
+                                            {loading ? <span className="loading"></span> : 'Predict Shot Outcome'}
+                                        </button>
+                                    </form>
+
+                                    {error && <div className="error">{error}</div>}
+                                    {prediction && (
+                                        <div className={`prediction-result ${prediction.prediction.toLowerCase()}`}>
+                                            <h3>{prediction.prediction}</h3>
+                                            <p>Probability: {(prediction.probability * 100).toFixed(1)}%</p>
+                                            <div className="probability-bar">
+                                                <div className="probability-fill" style={{ width: `${prediction.probability * 100}%` }}>
+                                                    {(prediction.probability * 100).toFixed(1)}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
+                            {activeTab === 'batch' && (
+                                <>
+                                    <h2>Batch Prediction Upload</h2>
+                                    <div className="file-upload">
+                                        <input 
+                                            type="file" 
+                                            accept=".csv" 
+                                            onChange={handleBatchUpload}
+                                            style={{ display: 'none' }}
+                                            id="batch-file"
+                                        />
+                                        <label htmlFor="batch-file" style={{ cursor: 'pointer' }}>
+                                            📁 Click to upload CSV or drag & drop
+                                            <p style={{ marginTop: '10px', fontSize: '0.9em', color: '#666' }}>
+                                                Required columns: shotDistance, shotZone, period, minutesRemaining, secondsRemaining, shotClock, defenderDistance, dribbles, touchTime, locationX, locationY
+                                            </p>
+                                        </label>
+                                    </div>
+
+                                    {error && <div className="error">{error}</div>}
+                                    {batchResults && (
+                                        <div className="success">
+                                            <h3>✓ Batch Processing Complete</h3>
+                                            <p>Total: {batchResults.total} | Successful: {batchResults.successful} | Failed: {batchResults.failed}</p>
+                                            <p style={{ marginTop: '10px', fontSize: '0.9em' }}>
+                                                {JSON.stringify(batchResults.predictions.slice(0, 3))}
+                                            </p>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

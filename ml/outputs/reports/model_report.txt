@@ -1,0 +1,43 @@
+NBA 3-Point Shot Prediction and Analysis System
+
+Dataset Summary
+- rows: 904
+- columns: 33
+- positive_rate: 0.5663716814159292
+- cleaned_dataset_path: C:\Users\aayam\Documents\nba-3point-predictor\ml\data\processed\cleaned_nba_shots.csv
+- quality_report_path: C:\Users\aayam\Documents\nba-3point-predictor\ml\outputs\reports\data_quality_report.txt
+- plot_paths: ['C:\\Users\\aayam\\Documents\\nba-3point-predictor\\ml\\outputs\\plots\\confusion_matrix.png', 'C:\\Users\\aayam\\Documents\\nba-3point-predictor\\ml\\outputs\\plots\\roc_curve.png', 'C:\\Users\\aayam\\Documents\\nba-3point-predictor\\ml\\outputs\\plots\\feature_importance.png', 'C:\\Users\\aayam\\Documents\\nba-3point-predictor\\ml\\outputs\\plots\\correlation_heatmap.png']
+
+Feature Statistics
+statistic  shotDistance     period  minutesRemaining  secondsRemaining  shotClock  defenderDistance  dribbles  touchTime  locationX  locationY  gameTimeRemaining  courtDistance  lateGameShot  cornerThree
+    count    904.000000 904.000000        904.000000        904.000000        0.0               0.0       0.0        0.0 904.000000 904.000000         904.000000     904.000000    904.000000        904.0
+     mean      1.362476   2.482301          5.068584         27.453540        NaN               NaN       NaN        NaN  -0.202138  11.315254        1398.825221      17.898094      0.021018          0.0
+      std      0.977648   1.101553          3.093190         16.677053        NaN               NaN       NaN        NaN  13.451496  10.098362         807.708049       9.510038      0.143523          0.0
+      min      0.000000   1.000000          0.000000          0.000000        NaN               NaN       NaN        NaN -29.995905 -10.000000          11.000000       0.000000      0.000000          0.0
+      25%      0.695461   1.000000          2.000000         13.000000        NaN               NaN       NaN        NaN  -9.247692   4.000000         675.750000      10.508069      0.000000          0.0
+      50%      1.000000   3.000000          5.000000         28.000000        NaN               NaN       NaN        NaN   0.000000  11.000000        1499.500000      16.985281      0.000000          0.0
+      75%      2.000000   3.000000          8.000000         41.000000        NaN               NaN       NaN        NaN   9.000000  18.000000        2047.000000      25.414654      0.000000          0.0
+      max      3.808915   6.000000         11.000000         59.000000        NaN               NaN       NaN        NaN  29.627178  38.000000        3712.000000      44.090802      1.000000          0.0
+
+Model Comparison
+              model  accuracy  precision   recall       f1  roc_auc
+            XGBoost  0.988950   0.980952 1.000000 0.990385 0.993030
+      Random Forest  0.944751   0.942857 0.961165 0.951923 0.991536
+Logistic Regression  0.508287   0.574468 0.524272 0.548223 0.506721
+
+Best Model Selected: XGBoost
+
+Feature Importance Ranking
+   feature  importance
+ feature_0    0.544660
+ feature_7    0.194949
+feature_10    0.127149
+ feature_6    0.038009
+ feature_5    0.028246
+ feature_4    0.022366
+ feature_2    0.019141
+ feature_3    0.016184
+ feature_1    0.009297
+ feature_8    0.000000
+ feature_9    0.000000
+feature_11    0.000000
