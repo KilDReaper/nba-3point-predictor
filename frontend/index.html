@@ -4,24 +4,24 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NBA 3PT% Forecaster</title>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.js"></script>
+  <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <script src="https://unpkg.com/recharts@2.1.9/umd/Recharts.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --court:    #C8973A;
-      --ink:      #0D0D0D;
-      --off:      #F7F4EE;
-      --mid:      #E8E3D9;
-      --dim:      #8A8375;
-      --line:     #D4CFC4;
-      --hit:      #1A6B3C;
-      --miss:     #B83232;
-      --card-bg:  #FFFFFF;
+      --court:   #C8973A;
+      --ink:     #0D0D0D;
+      --off:     #F7F4EE;
+      --mid:     #E8E3D9;
+      --dim:     #8A8375;
+      --line:    #D4CFC4;
+      --hit:     #1A6B3C;
+      --miss:    #B83232;
+      --card-bg: #FFFFFF;
     }
 
     body { font-family: 'Inter', sans-serif; background: var(--off); color: var(--ink); min-height: 100vh; }
@@ -96,15 +96,12 @@
   </style>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root"><p style="color:red">Loading...</p></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
-    const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
+    var API = 'http://localhost:8000';
 
-    const API = 'http://localhost:8000';
-
-    const FEATURE_LABELS = {
+    var FEATURE_LABELS = {
       fg3_pct_career_avg: 'Career 3PT%',
       FG_PCT:             'FG% (overall)',
       fg3a_per_game:      '3PA per game',
@@ -115,7 +112,7 @@
       MIN:                'Minutes/game',
     };
 
-    const IMPORTANCES = [
+    var IMPORTANCES = [
       { key: 'FG_PCT',             val: 0.133 },
       { key: 'fg3_pct_career_avg', val: 0.126 },
       { key: 'fg3a_per_game',      val: 0.112 },
@@ -126,46 +123,57 @@
       { key: 'MIN',                val: 0.049 },
     ];
 
-    function PlayerTab({ modelInfo }) {
-      const [query, setQuery]       = useState('');
-      const [allPlayers, setAll]    = useState([]);
-      const [filtered, setFiltered] = useState([]);
-      const [showDrop, setShowDrop] = useState(false);
-      const [loading, setLoading]   = useState(false);
-      const [playerData, setPlayer] = useState(null);
-      const [error, setError]       = useState('');
-      const wrapRef = useRef(null);
+    function PlayerTab(props) {
+      var modelInfo = props.modelInfo;
+      var queryState = React.useState('');
+      var query = queryState[0]; var setQuery = queryState[1];
+      var allState = React.useState([]);
+      var allPlayers = allState[0]; var setAll = allState[1];
+      var filtState = React.useState([]);
+      var filtered = filtState[0]; var setFiltered = filtState[1];
+      var dropState = React.useState(false);
+      var showDrop = dropState[0]; var setShowDrop = dropState[1];
+      var loadState = React.useState(false);
+      var loading = loadState[0]; var setLoading = loadState[1];
+      var playerState = React.useState(null);
+      var playerData = playerState[0]; var setPlayer = playerState[1];
+      var errState = React.useState('');
+      var error = errState[0]; var setError = errState[1];
+      var wrapRef = React.useRef(null);
 
-      useEffect(() => {
-        fetch(`${API}/players`).then(r => r.json()).then(d => setAll(d.players)).catch(() => {});
-        const handler = e => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setShowDrop(false); };
+      React.useEffect(function() {
+        fetch(API + '/players').then(function(r) { return r.json(); }).then(function(d) { setAll(d.players); }).catch(function() {});
+        function handler(e) { if (wrapRef.current && !wrapRef.current.contains(e.target)) setShowDrop(false); }
         document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
+        return function() { document.removeEventListener('mousedown', handler); };
       }, []);
 
-      const handleInput = val => {
+      function handleInput(val) {
         setQuery(val);
         if (val.length < 2) { setFiltered([]); setShowDrop(false); return; }
-        const f = allPlayers.filter(p => p.toLowerCase().includes(val.toLowerCase())).slice(0, 8);
+        var f = allPlayers.filter(function(p) { return p.toLowerCase().indexOf(val.toLowerCase()) !== -1; }).slice(0, 8);
         setFiltered(f);
         setShowDrop(f.length > 0);
-      };
+      }
 
-      const select = async name => {
+      function selectPlayer(name) {
         setQuery(name); setShowDrop(false); setLoading(true); setError(''); setPlayer(null);
-        try {
-          const r = await fetch(`${API}/player/${encodeURIComponent(name)}`);
-          if (!r.ok) throw new Error('Player not found');
-          setPlayer(await r.json());
-        } catch (e) { setError(e.message); }
-        finally { setLoading(false); }
-      };
+        fetch(API + '/player/' + encodeURIComponent(name))
+          .then(function(r) { if (!r.ok) throw new Error('Player not found'); return r.json(); })
+          .then(function(d) { setPlayer(d); })
+          .catch(function(e) { setError(e.message); })
+          .finally(function() { setLoading(false); });
+      }
 
-      const chartData = playerData?.history.map(h => ({
-        season:    h.season,
-        Actual:    +(h.actual_fg3_pct * 100).toFixed(1),
-        Predicted: +(h.predicted_fg3_pct * 100).toFixed(1),
-      }));
+      var chartData = playerData ? playerData.history.map(function(h) {
+        return {
+          season: h.season,
+          Actual: parseFloat((h.actual_fg3_pct * 100).toFixed(1)),
+          Predicted: parseFloat((h.predicted_fg3_pct * 100).toFixed(1)),
+        };
+      }) : [];
+
+      var RechartsCmp = Recharts;
 
       return (
         <div className="cols">
@@ -173,17 +181,19 @@
             <div className="card">
               <div className="card__title">Player Lookup</div>
               <div className="search-wrap" ref={wrapRef}>
-                <input className="search-input" placeholder="Search player name…" value={query}
-                  onChange={e => handleInput(e.target.value)}
-                  onFocus={() => filtered.length && setShowDrop(true)} />
+                <input className="search-input" placeholder="Search player name..." value={query}
+                  onChange={function(e) { handleInput(e.target.value); }}
+                  onFocus={function() { if (filtered.length) setShowDrop(true); }} />
                 {showDrop && (
                   <div className="dropdown">
-                    {filtered.map(p => <div key={p} className="dropdown-item" onMouseDown={() => select(p)}>{p}</div>)}
+                    {filtered.map(function(p) {
+                      return <div key={p} className="dropdown-item" onMouseDown={function() { selectPlayer(p); }}>{p}</div>;
+                    })}
                   </div>
                 )}
               </div>
-              <button className="btn-predict" disabled={!query || loading} onClick={() => select(query)}>
-                {loading ? <span className="spinner" /> : 'Load Player'}
+              <button className="btn-predict" disabled={!query || loading} onClick={function() { selectPlayer(query); }}>
+                {loading ? <span className="spinner"></span> : 'Load Player'}
               </button>
               {error && <div className="error-msg">{error}</div>}
               {playerData && (
@@ -195,14 +205,14 @@
               )}
             </div>
 
-            <div className="card" style={{ marginTop: 20 }}>
+            <div className="card" style={{marginTop: 20}}>
               <div className="card__title">Model Info</div>
               {modelInfo && (
                 <table className="history-table">
                   <tbody>
                     <tr><td style={{color:'var(--dim)'}}>Type</td><td>XGBoost Regressor</td></tr>
                     <tr><td style={{color:'var(--dim)'}}>MAE</td><td>{(modelInfo.mae * 100).toFixed(2)} pts</td></tr>
-                    <tr><td style={{color:'var(--dim)'}}>R²</td><td>{modelInfo.r2.toFixed(3)}</td></tr>
+                    <tr><td style={{color:'var(--dim)'}}>R2</td><td>{modelInfo.r2.toFixed(3)}</td></tr>
                     <tr><td style={{color:'var(--dim)'}}>Train rows</td><td>{modelInfo.training_rows}</td></tr>
                     <tr><td style={{color:'var(--dim)'}}>Seasons</td><td>2014-15 to 2023-24</td></tr>
                   </tbody>
@@ -212,34 +222,34 @@
           </div>
 
           <div className="card">
-            <div className="card__title">{playerData ? `${playerData.player} - Actual vs Predicted 3PT%` : 'Season History'}</div>
+            <div className="card__title">{playerData ? playerData.player + ' - Actual vs Predicted 3PT%' : 'Season History'}</div>
             {!playerData ? (
               <div className="empty-state">
                 <div className="empty-ball">🏀</div>
                 <div className="empty-text">Search for a player to see their 3PT% forecast across seasons</div>
               </div>
             ) : (
-              <>
+              <div>
                 <div className="chart-wrap">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E8E3D9" />
-                      <XAxis dataKey="season" tick={{ fontSize: 11, fill: '#8A8375' }} />
-                      <YAxis domain={['auto','auto']} tickFormatter={v => v + '%'} tick={{ fontSize: 11, fill: '#8A8375' }} />
-                      <Tooltip formatter={v => v + '%'} />
-                      <Legend />
-                      <Line type="monotone" dataKey="Actual" stroke="#0D0D0D" strokeWidth={2} dot={{ r: 3 }} />
-                      <Line type="monotone" dataKey="Predicted" stroke="#C8973A" strokeWidth={2} strokeDasharray="5 3" dot={{ r: 3 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <RechartsCmp.ResponsiveContainer width="100%" height="100%">
+                    <RechartsCmp.LineChart data={chartData} margin={{top: 8, right: 16, left: 0, bottom: 0}}>
+                      <RechartsCmp.CartesianGrid strokeDasharray="3 3" stroke="#E8E3D9" />
+                      <RechartsCmp.XAxis dataKey="season" tick={{fontSize: 11, fill: '#8A8375'}} />
+                      <RechartsCmp.YAxis domain={['auto','auto']} tickFormatter={function(v) { return v + '%'; }} tick={{fontSize: 11, fill: '#8A8375'}} />
+                      <RechartsCmp.Tooltip formatter={function(v) { return v + '%'; }} />
+                      <RechartsCmp.Legend />
+                      <RechartsCmp.Line type="monotone" dataKey="Actual" stroke="#0D0D0D" strokeWidth={2} dot={{r: 3}} />
+                      <RechartsCmp.Line type="monotone" dataKey="Predicted" stroke="#C8973A" strokeWidth={2} strokeDasharray="5 3" dot={{r: 3}} />
+                    </RechartsCmp.LineChart>
+                  </RechartsCmp.ResponsiveContainer>
                 </div>
-                <table className="history-table" style={{ marginTop: 24 }}>
+                <table className="history-table" style={{marginTop: 24}}>
                   <thead>
                     <tr><th>Season</th><th>Actual 3PT%</th><th>Predicted</th><th>Diff</th><th>3PA/G</th><th>GP</th></tr>
                   </thead>
                   <tbody>
-                    {playerData.history.map(h => {
-                      const diff = h.predicted_fg3_pct - h.actual_fg3_pct;
+                    {playerData.history.map(function(h) {
+                      var diff = h.predicted_fg3_pct - h.actual_fg3_pct;
                       return (
                         <tr key={h.season}>
                           <td>{h.season}</td>
@@ -253,7 +263,7 @@
                     })}
                   </tbody>
                 </table>
-              </>
+              </div>
             )}
           </div>
         </div>
@@ -261,55 +271,62 @@
     }
 
     function PredictTab() {
-      const [form, setForm] = useState({
+      var formState = React.useState({
         fg3_pct_last_season: 0.370, fg3a_per_game: 6.0, games_played: 70,
         minutes_per_game: 32.0, fg_pct: 0.470, ft_pct: 0.850,
         usg_pct: 24.0, ast_per_game: 4.0, tov_per_game: 2.5, seasons_in_league: 5,
       });
-      const [result, setResult] = useState(null);
-      const [loading, setLoading] = useState(false);
-      const [error, setError] = useState('');
+      var form = formState[0]; var setForm = formState[1];
+      var resState = React.useState(null);
+      var result = resState[0]; var setResult = resState[1];
+      var loadState = React.useState(false);
+      var loading = loadState[0]; var setLoading = loadState[1];
+      var errState = React.useState('');
+      var error = errState[0]; var setError = errState[1];
 
-      const set = (k, v) => setForm(f => ({ ...f, [k]: parseFloat(v) || 0 }));
+      function set(k, v) {
+        setForm(function(f) { var n = Object.assign({}, f); n[k] = parseFloat(v) || 0; return n; });
+      }
 
-      const predict = async () => {
+      function predict() {
         setLoading(true); setError(''); setResult(null);
-        try {
-          const r = await fetch(`${API}/predict`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form),
-          });
-          if (!r.ok) throw new Error('Prediction failed');
-          setResult(await r.json());
-        } catch (e) { setError(e.message); }
-        finally { setLoading(false); }
-      };
+        fetch(API + '/predict', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(form),
+        })
+          .then(function(r) { if (!r.ok) throw new Error('Prediction failed'); return r.json(); })
+          .then(function(d) { setResult(d); })
+          .catch(function(e) { setError(e.message); })
+          .finally(function() { setLoading(false); });
+      }
 
       return (
         <div className="cols">
           <div className="card">
             <div className="card__title">Player Stats</div>
             <div className="form-row-2">
-              <div className="form-group"><label className="form-label">3PT% Last Season</label><input className="form-input" type="number" step="0.001" value={form.fg3_pct_last_season} onChange={e => set('fg3_pct_last_season', e.target.value)} /></div>
-              <div className="form-group"><label className="form-label">3PA per Game</label><input className="form-input" type="number" step="0.1" value={form.fg3a_per_game} onChange={e => set('fg3a_per_game', e.target.value)} /></div>
+              <div className="form-group"><label className="form-label">3PT% Last Season</label><input className="form-input" type="number" step="0.001" value={form.fg3_pct_last_season} onChange={function(e) { set('fg3_pct_last_season', e.target.value); }} /></div>
+              <div className="form-group"><label className="form-label">3PA per Game</label><input className="form-input" type="number" step="0.1" value={form.fg3a_per_game} onChange={function(e) { set('fg3a_per_game', e.target.value); }} /></div>
             </div>
             <div className="form-row-2">
-              <div className="form-group"><label className="form-label">Games Played</label><input className="form-input" type="number" value={form.games_played} onChange={e => set('games_played', e.target.value)} /></div>
-              <div className="form-group"><label className="form-label">Minutes / Game</label><input className="form-input" type="number" step="0.1" value={form.minutes_per_game} onChange={e => set('minutes_per_game', e.target.value)} /></div>
+              <div className="form-group"><label className="form-label">Games Played</label><input className="form-input" type="number" value={form.games_played} onChange={function(e) { set('games_played', e.target.value); }} /></div>
+              <div className="form-group"><label className="form-label">Minutes / Game</label><input className="form-input" type="number" step="0.1" value={form.minutes_per_game} onChange={function(e) { set('minutes_per_game', e.target.value); }} /></div>
             </div>
             <div className="form-row-2">
-              <div className="form-group"><label className="form-label">FG% (Overall)</label><input className="form-input" type="number" step="0.001" value={form.fg_pct} onChange={e => set('fg_pct', e.target.value)} /></div>
-              <div className="form-group"><label className="form-label">FT%</label><input className="form-input" type="number" step="0.001" value={form.ft_pct} onChange={e => set('ft_pct', e.target.value)} /></div>
+              <div className="form-group"><label className="form-label">FG% (Overall)</label><input className="form-input" type="number" step="0.001" value={form.fg_pct} onChange={function(e) { set('fg_pct', e.target.value); }} /></div>
+              <div className="form-group"><label className="form-label">FT%</label><input className="form-input" type="number" step="0.001" value={form.ft_pct} onChange={function(e) { set('ft_pct', e.target.value); }} /></div>
             </div>
             <div className="form-row-2">
-              <div className="form-group"><label className="form-label">Usage Rate %</label><input className="form-input" type="number" step="0.1" value={form.usg_pct} onChange={e => set('usg_pct', e.target.value)} /></div>
-              <div className="form-group"><label className="form-label">Assists / Game</label><input className="form-input" type="number" step="0.1" value={form.ast_per_game} onChange={e => set('ast_per_game', e.target.value)} /></div>
+              <div className="form-group"><label className="form-label">Usage Rate %</label><input className="form-input" type="number" step="0.1" value={form.usg_pct} onChange={function(e) { set('usg_pct', e.target.value); }} /></div>
+              <div className="form-group"><label className="form-label">Assists / Game</label><input className="form-input" type="number" step="0.1" value={form.ast_per_game} onChange={function(e) { set('ast_per_game', e.target.value); }} /></div>
             </div>
             <div className="form-row-2">
-              <div className="form-group"><label className="form-label">Turnovers / Game</label><input className="form-input" type="number" step="0.1" value={form.tov_per_game} onChange={e => set('tov_per_game', e.target.value)} /></div>
-              <div className="form-group"><label className="form-label">Seasons in League</label><input className="form-input" type="number" value={form.seasons_in_league} onChange={e => set('seasons_in_league', e.target.value)} /></div>
+              <div className="form-group"><label className="form-label">Turnovers / Game</label><input className="form-input" type="number" step="0.1" value={form.tov_per_game} onChange={function(e) { set('tov_per_game', e.target.value); }} /></div>
+              <div className="form-group"><label className="form-label">Seasons in League</label><input className="form-input" type="number" value={form.seasons_in_league} onChange={function(e) { set('seasons_in_league', e.target.value); }} /></div>
             </div>
             <button className="btn-predict" onClick={predict} disabled={loading}>
-              {loading ? <span className="spinner" /> : 'Forecast Next Season 3PT%'}
+              {loading ? <span className="spinner"></span> : 'Forecast Next Season 3PT%'}
             </button>
             {error && <div className="error-msg">{error}</div>}
           </div>
@@ -322,7 +339,7 @@
                   <div className="result-pct">{result.predicted_fg3_pct_percent}%</div>
                   <div className="result-label">Predicted 3PT% - Next Season</div>
                 </div>
-                <table className="history-table" style={{ marginTop: 20 }}>
+                <table className="history-table" style={{marginTop: 20}}>
                   <thead><tr><th>Input Stat</th><th>Value</th></tr></thead>
                   <tbody>
                     <tr><td>3PT% Last Season</td><td>{(result.input.fg3_pct_last_season * 100).toFixed(1)}%</td></tr>
@@ -344,16 +361,18 @@
               </div>
             )}
 
-            <div className="card" style={{ marginTop: 20 }}>
+            <div className="card" style={{marginTop: 20}}>
               <div className="card__title">What drives the model</div>
               <div className="feat-list">
-                {IMPORTANCES.map(({ key, val }) => (
-                  <div className="feat-row" key={key}>
-                    <div className="feat-name">{FEATURE_LABELS[key] || key}</div>
-                    <div className="feat-bar-bg"><div className="feat-bar-fill" style={{ width: `${(val / 0.133) * 100}%` }} /></div>
-                    <div className="feat-val">{(val * 100).toFixed(0)}%</div>
-                  </div>
-                ))}
+                {IMPORTANCES.map(function(item) {
+                  return (
+                    <div className="feat-row" key={item.key}>
+                      <div className="feat-name">{FEATURE_LABELS[item.key] || item.key}</div>
+                      <div className="feat-bar-bg"><div className="feat-bar-fill" style={{width: ((item.val / 0.133) * 100) + '%'}}></div></div>
+                      <div className="feat-val">{(item.val * 100).toFixed(0)}%</div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -362,53 +381,55 @@
     }
 
     function App() {
-      const [tab, setTab]         = useState('players');
-      const [modelInfo, setModel] = useState(null);
+      var tabState = React.useState('players');
+      var tab = tabState[0]; var setTab = tabState[1];
+      var modelState = React.useState(null);
+      var modelInfo = modelState[0]; var setModel = modelState[1];
 
-      useEffect(() => {
-        fetch(`${API}/model-info`).then(r => r.json()).then(setModel).catch(() => {});
+      React.useEffect(function() {
+        fetch(API + '/model-info').then(function(r) { return r.json(); }).then(setModel).catch(function() {});
       }, []);
 
       return (
-        <>
+        <div>
           <header className="site-header">
             <div className="logo">3PT<span>Cast</span></div>
             <nav className="nav-tabs">
-              <button className={`nav-tab ${tab === 'players' ? 'active' : ''}`} onClick={() => setTab('players')}>Player History</button>
-              <button className={`nav-tab ${tab === 'predict' ? 'active' : ''}`} onClick={() => setTab('predict')}>Custom Forecast</button>
+              <button className={'nav-tab' + (tab === 'players' ? ' active' : '')} onClick={function() { setTab('players'); }}>Player History</button>
+              <button className={'nav-tab' + (tab === 'predict' ? ' active' : '')} onClick={function() { setTab('predict'); }}>Custom Forecast</button>
             </nav>
           </header>
           <main className="page">
             <div className="hero-strip">
               <div className="hero-stat">
                 <div className="hero-stat__label">Model Type</div>
-                <div className="hero-stat__value" style={{ fontSize: '1.2rem', paddingTop: 6 }}>XGBoost</div>
+                <div className="hero-stat__value" style={{fontSize: '1.2rem', paddingTop: 6}}>XGBoost</div>
                 <div className="hero-stat__sub">Regressor</div>
               </div>
               <div className="hero-stat">
                 <div className="hero-stat__label">Mean Abs. Error</div>
-                <div className="hero-stat__value">2.76<span style={{ fontSize: '1rem' }}>pts</span></div>
+                <div className="hero-stat__value">2.76<span style={{fontSize: '1rem'}}>pts</span></div>
                 <div className="hero-stat__sub">percentage points</div>
               </div>
               <div className="hero-stat">
-                <div className="hero-stat__label">R² Score</div>
+                <div className="hero-stat__label">R2 Score</div>
                 <div className="hero-stat__value">0.303</div>
                 <div className="hero-stat__sub">on held-out seasons</div>
               </div>
               <div className="hero-stat">
                 <div className="hero-stat__label">Dataset</div>
                 <div className="hero-stat__value">3.1K</div>
-                <div className="hero-stat__sub">player-seasons · 2014-24</div>
+                <div className="hero-stat__sub">player-seasons 2014-24</div>
               </div>
             </div>
             {tab === 'players' && <PlayerTab modelInfo={modelInfo} />}
             {tab === 'predict' && <PredictTab />}
           </main>
-        </>
+        </div>
       );
     }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    ReactDOM.render(<App />, document.getElementById('root'));
   </script>
 </body>
 </html>
