@@ -1,193 +1,140 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+﻿from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-import sys
-from pathlib import Path
 import pandas as pd
 import numpy as np
-from io import StringIO
+import pickle
+from pathlib import Path
 
-# Add ml module to path
-ml_path = Path(__file__).resolve().parents[1] / "ml"
-sys.path.insert(0, str(ml_path))
+app = FastAPI(title="NBA 3PT% Forecaster API")
 
-from scripts.pipeline_utils import load_best_model
-from scripts.preprocessing import prepare_prediction_frame
-from scripts.config import MODELS_DIR
-
-app = FastAPI(title="NBA 3-Point Shot Predictor API", version="1.0.0")
-
-# Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Global model instance (loaded once at startup)
-model = None
+# -- Load model artifacts --
+MODEL_DIR = Path("ml/models")
+DATA_PATH = Path("ml/data/processed/features.csv")
 
-@app.on_event("startup")
-async def load_model():
-    global model
-    try:
-        model = load_best_model()
-        print("✓ Model loaded successfully")
-    except Exception as e:
-        print(f"✗ Error loading model: {e}")
-        raise
+with open(MODEL_DIR / "forecaster_model.pkl", "rb") as f:
+    model = pickle.load(f)
+with open(MODEL_DIR / "team_encoder.pkl", "rb") as f:
+    team_encoder = pickle.load(f)
+with open(MODEL_DIR / "feature_list.pkl", "rb") as f:
+    feature_list = pickle.load(f)
 
+df = pd.read_csv(DATA_PATH)
+df["team_encoded"] = team_encoder.transform(
+    df["TEAM_ABBREVIATION"].fillna("UNK").apply(
+        lambda x: x if x in team_encoder.classes_ else "UNK"
+    )
+)
 
-class ShotPredictionRequest(BaseModel):
-    """Single shot prediction request"""
-    shotDistance: float
-    shotZone: str
-    period: int
-    minutesRemaining: float
-    secondsRemaining: float
-    shotClock: float
-    defenderDistance: float
-    dribbles: float
-    touchTime: float
-    locationX: float
-    locationY: float
+# -- Schemas --
+class PredictRequest(BaseModel):
+    fg3_pct_last_season: float
+    fg3a_per_game: float
+    games_played: float
+    minutes_per_game: float
+    fg_pct: float
+    ft_pct: float
+    usg_pct: float
+    ast_per_game: float
+    tov_per_game: float
+    seasons_in_league: int
+    team: str = "UNK"
 
+# -- Routes --
+@app.get("/")
+def health():
+    return {"status": "ok", "model": "NBA 3PT% Forecaster"}
 
-class ShotPredictionResponse(BaseModel):
-    """Single shot prediction response"""
-    prediction: str
-    probability: float
-    input_params: dict
+@app.get("/model-info")
+def model_info():
+    return {
+        "model_type": "XGBoost Regressor",
+        "mae": 0.0276,
+        "r2": 0.3031,
+        "training_rows": 1222,
+        "test_rows": 488,
+        "seasons": "2014-15 to 2023-24",
+        "features": feature_list,
+    }
 
+@app.get("/players")
+def get_players():
+    players = (
+        df.groupby("PLAYER_ID")["PLAYER_NAME"]
+        .first()
+        .reset_index()
+        .sort_values("PLAYER_NAME")
+    )
+    return {"players": players["PLAYER_NAME"].tolist(), "count": len(players)}
 
-class BatchPredictionResponse(BaseModel):
-    """Batch predictions response"""
-    total: int
-    successful: int
-    failed: int
-    predictions: list
+@app.get("/player/{player_name}")
+def get_player(player_name: str):
+    matches = df[df["PLAYER_NAME"].str.lower() == player_name.lower()]
+    if matches.empty:
+        # Try partial match
+        matches = df[df["PLAYER_NAME"].str.lower().str.contains(player_name.lower())]
+    if matches.empty:
+        raise HTTPException(status_code=404, detail=f"Player '{player_name}' not found")
 
+    player = matches.sort_values("SEASON")
+    available = [f for f in feature_list if f in player.columns]
+    player_features = player[available].fillna(0)
+    predictions = model.predict(player_features)
 
-class ModelInfoResponse(BaseModel):
-    """Model information and metrics"""
-    model_type: str
-    accuracy: float
-    f1_score: float
-    roc_auc: float
-    training_rows: int
-    positive_rate: float
+    history = []
+    for i, (_, row) in enumerate(player.iterrows()):
+        history.append({
+            "season": row["SEASON"],
+            "actual_fg3_pct": round(float(row["target_fg3_pct"]), 3),
+            "predicted_fg3_pct": round(float(predictions[i]), 3),
+            "fg3a_per_game": round(float(row["fg3a_per_game"]), 1),
+            "games_played": int(row["GP"]),
+        })
 
+    return {
+        "player": player["PLAYER_NAME"].iloc[0],
+        "seasons": len(history),
+        "history": history,
+    }
 
-@app.get("/", tags=["Health"])
-async def root():
-    """Health check endpoint"""
-    return {"status": "ok", "service": "NBA 3-Point Shot Predictor", "version": "1.0.0"}
+@app.post("/predict")
+def predict(req: PredictRequest):
+    # Encode team
+    team = req.team if req.team in team_encoder.classes_ else "UNK"
+    team_enc = int(team_encoder.transform([team])[0])
 
+    input_data = {
+        "fg3_pct_lag1": req.fg3_pct_last_season,
+        "fg3_pct_lag2": req.fg3_pct_last_season,
+        "fg3_pct_trend": 0.0,
+        "fg3_pct_career_avg": req.fg3_pct_last_season,
+        "fg3a_lag1": req.fg3a_per_game,
+        "fg3a_per_game": req.fg3a_per_game,
+        "high_volume": int(req.fg3a_per_game >= 5),
+        "GP": req.games_played,
+        "MIN": req.minutes_per_game,
+        "USG_PCT": req.usg_pct,
+        "AST": req.ast_per_game,
+        "TOV": req.tov_per_game,
+        "FG_PCT": req.fg_pct,
+        "FT_PCT": req.ft_pct,
+        "gp_lag1": req.games_played,
+        "seasons_in_league": req.seasons_in_league,
+        "team_encoded": team_enc,
+    }
 
-@app.post("/predict", response_model=ShotPredictionResponse, tags=["Prediction"])
-async def predict_shot(request: ShotPredictionRequest):
-    """Predict whether a single 3-point shot will be made"""
-    try:
-        if model is None:
-            raise HTTPException(status_code=503, detail="Model not loaded")
-        
-        frame = prepare_prediction_frame(
-            shotDistance=request.shotDistance,
-            shotZone=request.shotZone,
-            period=request.period,
-            minutesRemaining=request.minutesRemaining,
-            secondsRemaining=request.secondsRemaining,
-            shotClock=request.shotClock,
-            defenderDistance=request.defenderDistance,
-            dribbles=request.dribbles,
-            touchTime=request.touchTime,
-            locationX=request.locationX,
-            locationY=request.locationY,
-        )
-        
-        probability = float(model.predict_proba(frame)[0, 1])
-        prediction = "Made" if probability >= 0.5 else "Missed"
-        
-        return ShotPredictionResponse(
-            prediction=prediction,
-            probability=round(probability, 4),
-            input_params=request.dict()
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    row = pd.DataFrame([{f: input_data.get(f, 0) for f in feature_list}])
+    prediction = float(model.predict(row)[0])
 
-
-@app.post("/predict-batch", response_model=BatchPredictionResponse, tags=["Prediction"])
-async def predict_batch(file: UploadFile = File(...)):
-    """Batch predict from CSV upload (columns: shotDistance, shotZone, period, minutesRemaining, secondsRemaining, shotClock, defenderDistance, dribbles, touchTime, locationX, locationY)"""
-    try:
-        if model is None:
-            raise HTTPException(status_code=503, detail="Model not loaded")
-        
-        content = await file.read()
-        df = pd.read_csv(StringIO(content.decode()))
-        
-        required_cols = [
-            "shotDistance", "shotZone", "period", "minutesRemaining", "secondsRemaining",
-            "shotClock", "defenderDistance", "dribbles", "touchTime", "locationX", "locationY"
-        ]
-        missing = [c for c in required_cols if c not in df.columns]
-        if missing:
-            raise ValueError(f"Missing columns: {missing}")
-        
-        predictions = []
-        successful = 0
-        for idx, row in df.iterrows():
-            try:
-                frame = prepare_prediction_frame(
-                    shotDistance=float(row["shotDistance"]),
-                    shotZone=str(row["shotZone"]),
-                    period=int(row["period"]),
-                    minutesRemaining=float(row["minutesRemaining"]),
-                    secondsRemaining=float(row["secondsRemaining"]),
-                    shotClock=float(row["shotClock"]),
-                    defenderDistance=float(row["defenderDistance"]),
-                    dribbles=float(row["dribbles"]),
-                    touchTime=float(row["touchTime"]),
-                    locationX=float(row["locationX"]),
-                    locationY=float(row["locationY"]),
-                )
-                prob = float(model.predict_proba(frame)[0, 1])
-                pred = "Made" if prob >= 0.5 else "Missed"
-                predictions.append({"row": idx, "prediction": pred, "probability": round(prob, 4)})
-                successful += 1
-            except Exception as e:
-                predictions.append({"row": idx, "error": str(e)})
-        
-        return BatchPredictionResponse(
-            total=len(df),
-            successful=successful,
-            failed=len(df) - successful,
-            predictions=predictions
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@app.get("/model-info", response_model=ModelInfoResponse, tags=["Info"])
-async def get_model_info():
-    """Get model metadata and performance metrics"""
-    try:
-        return ModelInfoResponse(
-            model_type="XGBoost",
-            accuracy=0.9890,
-            f1_score=0.9904,
-            roc_auc=0.9930,
-            training_rows=904,
-            positive_rate=0.5664
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    return {
+        "predicted_fg3_pct": round(prediction, 3),
+        "predicted_fg3_pct_percent": round(prediction * 100, 1),
+        "input": req.model_dump(),
+    }

@@ -1,501 +1,414 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NBA 3-Point Shot Predictor</title>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        header {
-            text-align: center;
-            color: white;
-            margin-bottom: 40px;
-        }
-        header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-        header p {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
-        .content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
-        @media (max-width: 900px) {
-            .content {
-                grid-template-columns: 1fr;
-            }
-        }
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-        }
-        .card h2 {
-            color: #1e3c72;
-            margin-bottom: 20px;
-            font-size: 1.5em;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #333;
-        }
-        input, select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
-            font-size: 1em;
-            transition: border-color 0.3s;
-        }
-        input:focus, select:focus {
-            outline: none;
-            border-color: #2a5298;
-        }
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-        button {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 1em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(42, 82, 152, 0.4);
-        }
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-        .prediction-result {
-            margin-top: 20px;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-        }
-        .prediction-result.made {
-            background: #e8f5e9;
-            border: 2px solid #4caf50;
-            color: #2e7d32;
-        }
-        .prediction-result.missed {
-            background: #ffebee;
-            border: 2px solid #f44336;
-            color: #c62828;
-        }
-        .prediction-result h3 {
-            font-size: 2em;
-            margin-bottom: 10px;
-        }
-        .probability-bar {
-            width: 100%;
-            height: 30px;
-            background: #e0e0e0;
-            border-radius: 15px;
-            overflow: hidden;
-            margin-top: 15px;
-        }
-        .probability-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #f44336 0%, #ff9800 50%, #4caf50 100%);
-            transition: width 0.5s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 0.9em;
-        }
-        .model-info {
-            background: #f5f5f5;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        .model-info h3 {
-            color: #1e3c72;
-            margin-bottom: 15px;
-        }
-        .metric {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .metric:last-child {
-            border-bottom: none;
-        }
-        .metric-value {
-            font-weight: 600;
-            color: #2a5298;
-        }
-        .file-upload {
-            border: 2px dashed #2a5298;
-            border-radius: 8px;
-            padding: 30px;
-            text-align: center;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        .file-upload:hover {
-            background: #f5f5f5;
-        }
-        .error {
-            background: #ffebee;
-            color: #c62828;
-            padding: 15px;
-            border-radius: 6px;
-            margin: 15px 0;
-        }
-        .success {
-            background: #e8f5e9;
-            color: #2e7d32;
-            padding: 15px;
-            border-radius: 6px;
-            margin: 15px 0;
-        }
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #2a5298;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NBA 3PT% Forecaster</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --court:    #C8973A;
+      --ink:      #0D0D0D;
+      --off:      #F7F4EE;
+      --mid:      #E8E3D9;
+      --dim:      #8A8375;
+      --line:     #D4CFC4;
+      --hit:      #1A6B3C;
+      --miss:     #B83232;
+      --card-bg:  #FFFFFF;
+    }
+
+    body { font-family: 'Inter', sans-serif; background: var(--off); color: var(--ink); min-height: 100vh; }
+
+    .site-header { background: var(--ink); padding: 0 32px; display: flex; align-items: center; justify-content: space-between; height: 64px; border-bottom: 3px solid var(--court); }
+    .logo { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; color: var(--court); letter-spacing: 0.06em; }
+    .logo span { color: #fff; }
+    .nav-tabs { display: flex; gap: 4px; }
+    .nav-tab { background: none; border: none; color: #aaa; font-family: 'Inter', sans-serif; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 8px 16px; cursor: pointer; border-radius: 4px; transition: color 0.15s, background 0.15s; }
+    .nav-tab:hover { color: #fff; background: rgba(255,255,255,0.08); }
+    .nav-tab.active { color: var(--court); background: rgba(200,151,58,0.12); }
+
+    .page { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+
+    .hero-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 32px; }
+    .hero-stat { background: var(--card-bg); padding: 20px 24px; display: flex; flex-direction: column; gap: 4px; }
+    .hero-stat__label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); }
+    .hero-stat__value { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: var(--court); line-height: 1; }
+    .hero-stat__sub { font-size: 0.72rem; color: var(--dim); }
+
+    .cols { display: grid; grid-template-columns: 340px 1fr; gap: 24px; }
+    @media (max-width: 800px) { .cols { grid-template-columns: 1fr; } .hero-strip { grid-template-columns: 1fr 1fr; } }
+
+    .card { background: var(--card-bg); border: 1px solid var(--line); border-radius: 10px; padding: 28px; }
+    .card__title { font-family: 'Bebas Neue', sans-serif; font-size: 1.15rem; letter-spacing: 0.06em; color: var(--ink); margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid var(--court); display: inline-block; }
+
+    .search-wrap { position: relative; margin-bottom: 16px; }
+    .search-input { width: 100%; padding: 12px 16px; border: 1.5px solid var(--line); border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 0.95rem; background: var(--off); transition: border-color 0.15s; }
+    .search-input:focus { outline: none; border-color: var(--court); }
+    .dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff; border: 1.5px solid var(--line); border-radius: 6px; max-height: 200px; overflow-y: auto; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+    .dropdown-item { padding: 10px 16px; cursor: pointer; font-size: 0.9rem; transition: background 0.1s; }
+    .dropdown-item:hover { background: var(--off); }
+
+    .btn-predict { width: 100%; padding: 13px; background: var(--court); color: var(--ink); border: none; border-radius: 6px; font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.1em; cursor: pointer; transition: opacity 0.15s, transform 0.1s; margin-top: 4px; }
+    .btn-predict:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-predict:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .result-badge { margin-top: 20px; padding: 20px; border-radius: 8px; background: var(--off); border: 1.5px solid var(--line); text-align: center; }
+    .result-pct { font-family: 'Bebas Neue', sans-serif; font-size: 3.5rem; color: var(--court); line-height: 1; }
+    .result-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); margin-top: 4px; }
+    .result-player { font-size: 0.9rem; font-weight: 600; margin-top: 8px; color: var(--ink); }
+
+    .chart-wrap { height: 280px; width: 100%; }
+    .empty-state { height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--dim); }
+    .empty-ball { font-size: 2.5rem; opacity: 0.3; }
+    .empty-text { font-size: 0.85rem; text-align: center; max-width: 200px; line-height: 1.5; }
+
+    .history-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.85rem; }
+    .history-table th { text-align: left; padding: 8px 12px; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); border-bottom: 2px solid var(--line); }
+    .history-table td { padding: 9px 12px; border-bottom: 1px solid var(--mid); font-family: 'JetBrains Mono', monospace; }
+    .history-table tr:last-child td { border-bottom: none; }
+    .diff-pos { color: var(--hit); font-weight: 600; }
+    .diff-neg { color: var(--miss); font-weight: 600; }
+
+    .feat-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+    .feat-row { display: flex; align-items: center; gap: 10px; font-size: 0.82rem; }
+    .feat-name { width: 160px; color: var(--ink); font-weight: 500; flex-shrink: 0; }
+    .feat-bar-bg { flex: 1; height: 6px; background: var(--mid); border-radius: 3px; overflow: hidden; }
+    .feat-bar-fill { height: 100%; background: var(--court); border-radius: 3px; transition: width 0.6s ease; }
+    .feat-val { width: 36px; text-align: right; color: var(--dim); font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
+
+    .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(0,0,0,0.2); border-top-color: var(--ink); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg { padding: 12px 16px; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 6px; color: var(--miss); font-size: 0.85rem; margin-top: 12px; }
+
+    .form-group { margin-bottom: 14px; }
+    .form-label { display: block; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim); margin-bottom: 5px; }
+    .form-input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; background: var(--off); transition: border-color 0.15s; }
+    .form-input:focus { outline: none; border-color: var(--court); }
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  </style>
 </head>
 <body>
-    <div id="root"></div>
+  <div id="root"></div>
 
-    <script type="text/babel">
-        const API_URL = 'http://localhost:8000';
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+    const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
 
-        function App() {
-            const [activeTab, setActiveTab] = React.useState('single');
-            const [formData, setFormData] = React.useState({
-                shotDistance: 25,
-                shotZone: 'Above the Break 3',
-                period: 2,
-                minutesRemaining: 5,
-                secondsRemaining: 30,
-                shotClock: 10,
-                defenderDistance: 5,
-                dribbles: 2,
-                touchTime: 1.5,
-                locationX: 50,
-                locationY: 250,
-            });
-            const [prediction, setPrediction] = React.useState(null);
-            const [loading, setLoading] = React.useState(false);
-            const [error, setError] = React.useState(null);
-            const [modelInfo, setModelInfo] = React.useState(null);
-            const [batchResults, setBatchResults] = React.useState(null);
+    const API = 'http://localhost:8000';
 
-            React.useEffect(() => {
-                fetchModelInfo();
-            }, []);
+    const FEATURE_LABELS = {
+      fg3_pct_career_avg: 'Career 3PT%',
+      FG_PCT:             'FG% (overall)',
+      fg3a_per_game:      '3PA per game',
+      high_volume:        'Volume shooter',
+      FT_PCT:             'FT%',
+      TOV:                'Turnovers',
+      fg3_pct_lag2:       '3PT% (2 yrs ago)',
+      MIN:                'Minutes/game',
+    };
 
-            const fetchModelInfo = async () => {
-                try {
-                    const res = await fetch(`${API_URL}/model-info`);
-                    const data = await res.json();
-                    setModelInfo(data);
-                } catch (err) {
-                    console.error('Error fetching model info:', err);
-                }
-            };
+    const IMPORTANCES = [
+      { key: 'FG_PCT',             val: 0.133 },
+      { key: 'fg3_pct_career_avg', val: 0.126 },
+      { key: 'fg3a_per_game',      val: 0.112 },
+      { key: 'high_volume',        val: 0.084 },
+      { key: 'FT_PCT',             val: 0.074 },
+      { key: 'TOV',                val: 0.074 },
+      { key: 'fg3_pct_lag2',       val: 0.055 },
+      { key: 'MIN',                val: 0.049 },
+    ];
 
-            const handleInputChange = (e) => {
-                const { name, value } = e.target;
-                setFormData(prev => ({
-                    ...prev,
-                    [name]: parseFloat(value) || value
-                }));
-            };
+    function PlayerTab({ modelInfo }) {
+      const [query, setQuery]       = useState('');
+      const [allPlayers, setAll]    = useState([]);
+      const [filtered, setFiltered] = useState([]);
+      const [showDrop, setShowDrop] = useState(false);
+      const [loading, setLoading]   = useState(false);
+      const [playerData, setPlayer] = useState(null);
+      const [error, setError]       = useState('');
+      const wrapRef = useRef(null);
 
-            const handlePredict = async (e) => {
-                e.preventDefault();
-                setLoading(true);
-                setError(null);
-                setPrediction(null);
+      useEffect(() => {
+        fetch(`${API}/players`).then(r => r.json()).then(d => setAll(d.players)).catch(() => {});
+        const handler = e => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setShowDrop(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+      }, []);
 
-                try {
-                    const res = await fetch(`${API_URL}/predict`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(formData)
-                    });
+      const handleInput = val => {
+        setQuery(val);
+        if (val.length < 2) { setFiltered([]); setShowDrop(false); return; }
+        const f = allPlayers.filter(p => p.toLowerCase().includes(val.toLowerCase())).slice(0, 8);
+        setFiltered(f);
+        setShowDrop(f.length > 0);
+      };
 
-                    if (!res.ok) throw new Error('Prediction failed');
-                    const data = await res.json();
-                    setPrediction(data);
-                } catch (err) {
-                    setError(err.message);
-                }
-                finally {
-                    setLoading(false);
-                }
-            };
+      const select = async name => {
+        setQuery(name); setShowDrop(false); setLoading(true); setError(''); setPlayer(null);
+        try {
+          const r = await fetch(`${API}/player/${encodeURIComponent(name)}`);
+          if (!r.ok) throw new Error('Player not found');
+          setPlayer(await r.json());
+        } catch (e) { setError(e.message); }
+        finally { setLoading(false); }
+      };
 
-            const handleBatchUpload = async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
+      const chartData = playerData?.history.map(h => ({
+        season:    h.season,
+        Actual:    +(h.actual_fg3_pct * 100).toFixed(1),
+        Predicted: +(h.predicted_fg3_pct * 100).toFixed(1),
+      }));
 
-                setLoading(true);
-                setError(null);
-                setBatchResults(null);
-
-                const formData = new FormData();
-                formData.append('file', file);
-
-                try {
-                    const res = await fetch(`${API_URL}/predict-batch`, {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    if (!res.ok) throw new Error('Batch prediction failed');
-                    const data = await res.json();
-                    setBatchResults(data);
-                } catch (err) {
-                    setError(err.message);
-                }
-                finally {
-                    setLoading(false);
-                }
-            };
-
-            return (
-                <div className="container">
-                    <header>
-                        <h1>🏀 NBA 3-Point Shot Predictor</h1>
-                        <p>AI-powered prediction of 3-point shot success</p>
-                    </header>
-
-                    <div style={{ marginBottom: '30px', textAlign: 'center' }}>
-                        <button 
-                            onClick={() => setActiveTab('single')}
-                            style={{
-                                width: 'auto',
-                                padding: '10px 30px',
-                                marginRight: '10px',
-                                opacity: activeTab === 'single' ? 1 : 0.6
-                            }}
-                        >
-                            Single Prediction
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('batch')}
-                            style={{
-                                width: 'auto',
-                                padding: '10px 30px',
-                                opacity: activeTab === 'batch' ? 1 : 0.6
-                            }}
-                        >
-                            Batch Upload
-                        </button>
-                    </div>
-
-                    <div className="content">
-                        {/* Left Panel - Model Info */}
-                        <div className="card">
-                            <h2>Model Performance</h2>
-                            {modelInfo && (
-                                <div className="model-info">
-                                    <h3>XGBoost Classifier</h3>
-                                    <div className="metric">
-                                        <span>Accuracy</span>
-                                        <span className="metric-value">{(modelInfo.accuracy * 100).toFixed(1)}%</span>
-                                    </div>
-                                    <div className="metric">
-                                        <span>F1 Score</span>
-                                        <span className="metric-value">{(modelInfo.f1_score * 100).toFixed(1)}%</span>
-                                    </div>
-                                    <div className="metric">
-                                        <span>ROC-AUC</span>
-                                        <span className="metric-value">{(modelInfo.roc_auc * 100).toFixed(1)}%</span>
-                                    </div>
-                                    <div className="metric">
-                                        <span>Training Rows</span>
-                                        <span className="metric-value">{modelInfo.training_rows}</span>
-                                    </div>
-                                    <div className="metric">
-                                        <span>Positive Rate</span>
-                                        <span className="metric-value">{(modelInfo.positive_rate * 100).toFixed(1)}%</span>
-                                    </div>
-                                </div>
-                            )}
-                            <div style={{ marginTop: '20px', fontSize: '0.9em', color: '#666' }}>
-                                <p>This model was trained on 904 NBA 3-point shots across 3 players (Stephen Curry, Klay Thompson, Damian Lillard) over 2 seasons (2022-23, 2023-24).</p>
-                            </div>
-                        </div>
-
-                        {/* Right Panel - Prediction */}
-                        <div className="card">
-                            {activeTab === 'single' && (
-                                <>
-                                    <h2>Single Shot Prediction</h2>
-                                    <form onSubmit={handlePredict}>
-                                        <div className="form-row">
-                                            <div className="form-group">
-                                                <label>Shot Distance (ft)</label>
-                                                <input type="number" name="shotDistance" value={formData.shotDistance} onChange={handleInputChange} step="0.1" />
-                                            </div>
-                                            <div className="form-group">
-                                                <label>Shot Zone</label>
-                                                <select name="shotZone" value={formData.shotZone} onChange={handleInputChange}>
-                                                    <option>Above the Break 3</option>
-                                                    <option>Left Corner 3</option>
-                                                    <option>Right Corner 3</option>
-                                                    <option>Backcourt</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div className="form-row">
-                                            <div className="form-group">
-                                                <label>Period</label>
-                                                <input type="number" name="period" value={formData.period} onChange={handleInputChange} min="1" max="4" />
-                                            </div>
-                                            <div className="form-group">
-                                                <label>Minutes Remaining</label>
-                                                <input type="number" name="minutesRemaining" value={formData.minutesRemaining} onChange={handleInputChange} step="0.1" />
-                                            </div>
-                                        </div>
-                                        <div className="form-row">
-                                            <div className="form-group">
-                                                <label>Seconds Remaining</label>
-                                                <input type="number" name="secondsRemaining" value={formData.secondsRemaining} onChange={handleInputChange} min="0" max="59" />
-                                            </div>
-                                            <div className="form-group">
-                                                <label>Shot Clock (s)</label>
-                                                <input type="number" name="shotClock" value={formData.shotClock} onChange={handleInputChange} step="0.1" />
-                                            </div>
-                                        </div>
-                                        <div className="form-row">
-                                            <div className="form-group">
-                                                <label>Defender Distance (ft)</label>
-                                                <input type="number" name="defenderDistance" value={formData.defenderDistance} onChange={handleInputChange} step="0.1" />
-                                            </div>
-                                            <div className="form-group">
-                                                <label>Dribbles</label>
-                                                <input type="number" name="dribbles" value={formData.dribbles} onChange={handleInputChange} step="0.1" />
-                                            </div>
-                                        </div>
-                                        <div className="form-row">
-                                            <div className="form-group">
-                                                <label>Touch Time (s)</label>
-                                                <input type="number" name="touchTime" value={formData.touchTime} onChange={handleInputChange} step="0.1" />
-                                            </div>
-                                            <div className="form-group">
-                                                <label>Location X</label>
-                                                <input type="number" name="locationX" value={formData.locationX} onChange={handleInputChange} step="0.1" />
-                                            </div>
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Location Y</label>
-                                            <input type="number" name="locationY" value={formData.locationY} onChange={handleInputChange} step="0.1" />
-                                        </div>
-                                        <button type="submit" disabled={loading}>
-                                            {loading ? <span className="loading"></span> : 'Predict Shot Outcome'}
-                                        </button>
-                                    </form>
-
-                                    {error && <div className="error">{error}</div>}
-                                    {prediction && (
-                                        <div className={`prediction-result ${prediction.prediction.toLowerCase()}`}>
-                                            <h3>{prediction.prediction}</h3>
-                                            <p>Probability: {(prediction.probability * 100).toFixed(1)}%</p>
-                                            <div className="probability-bar">
-                                                <div className="probability-fill" style={{ width: `${prediction.probability * 100}%` }}>
-                                                    {(prediction.probability * 100).toFixed(1)}%
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </>
-                            )}
-
-                            {activeTab === 'batch' && (
-                                <>
-                                    <h2>Batch Prediction Upload</h2>
-                                    <div className="file-upload">
-                                        <input 
-                                            type="file" 
-                                            accept=".csv" 
-                                            onChange={handleBatchUpload}
-                                            style={{ display: 'none' }}
-                                            id="batch-file"
-                                        />
-                                        <label htmlFor="batch-file" style={{ cursor: 'pointer' }}>
-                                            📁 Click to upload CSV or drag & drop
-                                            <p style={{ marginTop: '10px', fontSize: '0.9em', color: '#666' }}>
-                                                Required columns: shotDistance, shotZone, period, minutesRemaining, secondsRemaining, shotClock, defenderDistance, dribbles, touchTime, locationX, locationY
-                                            </p>
-                                        </label>
-                                    </div>
-
-                                    {error && <div className="error">{error}</div>}
-                                    {batchResults && (
-                                        <div className="success">
-                                            <h3>✓ Batch Processing Complete</h3>
-                                            <p>Total: {batchResults.total} | Successful: {batchResults.successful} | Failed: {batchResults.failed}</p>
-                                            <p style={{ marginTop: '10px', fontSize: '0.9em' }}>
-                                                {JSON.stringify(batchResults.predictions.slice(0, 3))}
-                                            </p>
-                                        </div>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    </div>
+      return (
+        <div className="cols">
+          <div>
+            <div className="card">
+              <div className="card__title">Player Lookup</div>
+              <div className="search-wrap" ref={wrapRef}>
+                <input className="search-input" placeholder="Search player name…" value={query}
+                  onChange={e => handleInput(e.target.value)}
+                  onFocus={() => filtered.length && setShowDrop(true)} />
+                {showDrop && (
+                  <div className="dropdown">
+                    {filtered.map(p => <div key={p} className="dropdown-item" onMouseDown={() => select(p)}>{p}</div>)}
+                  </div>
+                )}
+              </div>
+              <button className="btn-predict" disabled={!query || loading} onClick={() => select(query)}>
+                {loading ? <span className="spinner" /> : 'Load Player'}
+              </button>
+              {error && <div className="error-msg">{error}</div>}
+              {playerData && (
+                <div className="result-badge">
+                  <div className="result-pct">{(playerData.history[playerData.history.length - 1].predicted_fg3_pct * 100).toFixed(1)}%</div>
+                  <div className="result-label">Latest Season Forecast</div>
+                  <div className="result-player">{playerData.player}</div>
                 </div>
-            );
-        }
+              )}
+            </div>
 
-        ReactDOM.render(<App />, document.getElementById('root'));
-    </script>
+            <div className="card" style={{ marginTop: 20 }}>
+              <div className="card__title">Model Info</div>
+              {modelInfo && (
+                <table className="history-table">
+                  <tbody>
+                    <tr><td style={{color:'var(--dim)'}}>Type</td><td>XGBoost Regressor</td></tr>
+                    <tr><td style={{color:'var(--dim)'}}>MAE</td><td>{(modelInfo.mae * 100).toFixed(2)} pts</td></tr>
+                    <tr><td style={{color:'var(--dim)'}}>R²</td><td>{modelInfo.r2.toFixed(3)}</td></tr>
+                    <tr><td style={{color:'var(--dim)'}}>Train rows</td><td>{modelInfo.training_rows}</td></tr>
+                    <tr><td style={{color:'var(--dim)'}}>Seasons</td><td>2014-15 to 2023-24</td></tr>
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card__title">{playerData ? `${playerData.player} - Actual vs Predicted 3PT%` : 'Season History'}</div>
+            {!playerData ? (
+              <div className="empty-state">
+                <div className="empty-ball">🏀</div>
+                <div className="empty-text">Search for a player to see their 3PT% forecast across seasons</div>
+              </div>
+            ) : (
+              <>
+                <div className="chart-wrap">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E8E3D9" />
+                      <XAxis dataKey="season" tick={{ fontSize: 11, fill: '#8A8375' }} />
+                      <YAxis domain={['auto','auto']} tickFormatter={v => v + '%'} tick={{ fontSize: 11, fill: '#8A8375' }} />
+                      <Tooltip formatter={v => v + '%'} />
+                      <Legend />
+                      <Line type="monotone" dataKey="Actual" stroke="#0D0D0D" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="Predicted" stroke="#C8973A" strokeWidth={2} strokeDasharray="5 3" dot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                <table className="history-table" style={{ marginTop: 24 }}>
+                  <thead>
+                    <tr><th>Season</th><th>Actual 3PT%</th><th>Predicted</th><th>Diff</th><th>3PA/G</th><th>GP</th></tr>
+                  </thead>
+                  <tbody>
+                    {playerData.history.map(h => {
+                      const diff = h.predicted_fg3_pct - h.actual_fg3_pct;
+                      return (
+                        <tr key={h.season}>
+                          <td>{h.season}</td>
+                          <td>{(h.actual_fg3_pct * 100).toFixed(1)}%</td>
+                          <td>{(h.predicted_fg3_pct * 100).toFixed(1)}%</td>
+                          <td className={diff >= 0 ? 'diff-pos' : 'diff-neg'}>{diff >= 0 ? '+' : ''}{(diff * 100).toFixed(1)}%</td>
+                          <td>{h.fg3a_per_game}</td>
+                          <td>{h.games_played}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function PredictTab() {
+      const [form, setForm] = useState({
+        fg3_pct_last_season: 0.370, fg3a_per_game: 6.0, games_played: 70,
+        minutes_per_game: 32.0, fg_pct: 0.470, ft_pct: 0.850,
+        usg_pct: 24.0, ast_per_game: 4.0, tov_per_game: 2.5, seasons_in_league: 5,
+      });
+      const [result, setResult] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const [error, setError] = useState('');
+
+      const set = (k, v) => setForm(f => ({ ...f, [k]: parseFloat(v) || 0 }));
+
+      const predict = async () => {
+        setLoading(true); setError(''); setResult(null);
+        try {
+          const r = await fetch(`${API}/predict`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form),
+          });
+          if (!r.ok) throw new Error('Prediction failed');
+          setResult(await r.json());
+        } catch (e) { setError(e.message); }
+        finally { setLoading(false); }
+      };
+
+      return (
+        <div className="cols">
+          <div className="card">
+            <div className="card__title">Player Stats</div>
+            <div className="form-row-2">
+              <div className="form-group"><label className="form-label">3PT% Last Season</label><input className="form-input" type="number" step="0.001" value={form.fg3_pct_last_season} onChange={e => set('fg3_pct_last_season', e.target.value)} /></div>
+              <div className="form-group"><label className="form-label">3PA per Game</label><input className="form-input" type="number" step="0.1" value={form.fg3a_per_game} onChange={e => set('fg3a_per_game', e.target.value)} /></div>
+            </div>
+            <div className="form-row-2">
+              <div className="form-group"><label className="form-label">Games Played</label><input className="form-input" type="number" value={form.games_played} onChange={e => set('games_played', e.target.value)} /></div>
+              <div className="form-group"><label className="form-label">Minutes / Game</label><input className="form-input" type="number" step="0.1" value={form.minutes_per_game} onChange={e => set('minutes_per_game', e.target.value)} /></div>
+            </div>
+            <div className="form-row-2">
+              <div className="form-group"><label className="form-label">FG% (Overall)</label><input className="form-input" type="number" step="0.001" value={form.fg_pct} onChange={e => set('fg_pct', e.target.value)} /></div>
+              <div className="form-group"><label className="form-label">FT%</label><input className="form-input" type="number" step="0.001" value={form.ft_pct} onChange={e => set('ft_pct', e.target.value)} /></div>
+            </div>
+            <div className="form-row-2">
+              <div className="form-group"><label className="form-label">Usage Rate %</label><input className="form-input" type="number" step="0.1" value={form.usg_pct} onChange={e => set('usg_pct', e.target.value)} /></div>
+              <div className="form-group"><label className="form-label">Assists / Game</label><input className="form-input" type="number" step="0.1" value={form.ast_per_game} onChange={e => set('ast_per_game', e.target.value)} /></div>
+            </div>
+            <div className="form-row-2">
+              <div className="form-group"><label className="form-label">Turnovers / Game</label><input className="form-input" type="number" step="0.1" value={form.tov_per_game} onChange={e => set('tov_per_game', e.target.value)} /></div>
+              <div className="form-group"><label className="form-label">Seasons in League</label><input className="form-input" type="number" value={form.seasons_in_league} onChange={e => set('seasons_in_league', e.target.value)} /></div>
+            </div>
+            <button className="btn-predict" onClick={predict} disabled={loading}>
+              {loading ? <span className="spinner" /> : 'Forecast Next Season 3PT%'}
+            </button>
+            {error && <div className="error-msg">{error}</div>}
+          </div>
+
+          <div>
+            {result ? (
+              <div className="card">
+                <div className="card__title">Forecast Result</div>
+                <div className="result-badge">
+                  <div className="result-pct">{result.predicted_fg3_pct_percent}%</div>
+                  <div className="result-label">Predicted 3PT% - Next Season</div>
+                </div>
+                <table className="history-table" style={{ marginTop: 20 }}>
+                  <thead><tr><th>Input Stat</th><th>Value</th></tr></thead>
+                  <tbody>
+                    <tr><td>3PT% Last Season</td><td>{(result.input.fg3_pct_last_season * 100).toFixed(1)}%</td></tr>
+                    <tr><td>3PA / Game</td><td>{result.input.fg3a_per_game}</td></tr>
+                    <tr><td>FG%</td><td>{(result.input.fg_pct * 100).toFixed(1)}%</td></tr>
+                    <tr><td>FT%</td><td>{(result.input.ft_pct * 100).toFixed(1)}%</td></tr>
+                    <tr><td>Usage Rate</td><td>{result.input.usg_pct}%</td></tr>
+                    <tr><td>Games Played</td><td>{result.input.games_played}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="card">
+                <div className="card__title">Forecast Result</div>
+                <div className="empty-state">
+                  <div className="empty-ball">📊</div>
+                  <div className="empty-text">Fill in a player's stats and click Forecast to get their predicted 3PT% for next season</div>
+                </div>
+              </div>
+            )}
+
+            <div className="card" style={{ marginTop: 20 }}>
+              <div className="card__title">What drives the model</div>
+              <div className="feat-list">
+                {IMPORTANCES.map(({ key, val }) => (
+                  <div className="feat-row" key={key}>
+                    <div className="feat-name">{FEATURE_LABELS[key] || key}</div>
+                    <div className="feat-bar-bg"><div className="feat-bar-fill" style={{ width: `${(val / 0.133) * 100}%` }} /></div>
+                    <div className="feat-val">{(val * 100).toFixed(0)}%</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [tab, setTab]         = useState('players');
+      const [modelInfo, setModel] = useState(null);
+
+      useEffect(() => {
+        fetch(`${API}/model-info`).then(r => r.json()).then(setModel).catch(() => {});
+      }, []);
+
+      return (
+        <>
+          <header className="site-header">
+            <div className="logo">3PT<span>Cast</span></div>
+            <nav className="nav-tabs">
+              <button className={`nav-tab ${tab === 'players' ? 'active' : ''}`} onClick={() => setTab('players')}>Player History</button>
+              <button className={`nav-tab ${tab === 'predict' ? 'active' : ''}`} onClick={() => setTab('predict')}>Custom Forecast</button>
+            </nav>
+          </header>
+          <main className="page">
+            <div className="hero-strip">
+              <div className="hero-stat">
+                <div className="hero-stat__label">Model Type</div>
+                <div className="hero-stat__value" style={{ fontSize: '1.2rem', paddingTop: 6 }}>XGBoost</div>
+                <div className="hero-stat__sub">Regressor</div>
+              </div>
+              <div className="hero-stat">
+                <div className="hero-stat__label">Mean Abs. Error</div>
+                <div className="hero-stat__value">2.76<span style={{ fontSize: '1rem' }}>pts</span></div>
+                <div className="hero-stat__sub">percentage points</div>
+              </div>
+              <div className="hero-stat">
+                <div className="hero-stat__label">R² Score</div>
+                <div className="hero-stat__value">0.303</div>
+                <div className="hero-stat__sub">on held-out seasons</div>
+              </div>
+              <div className="hero-stat">
+                <div className="hero-stat__label">Dataset</div>
+                <div className="hero-stat__value">3.1K</div>
+                <div className="hero-stat__sub">player-seasons · 2014-24</div>
+              </div>
+            </div>
+            {tab === 'players' && <PlayerTab modelInfo={modelInfo} />}
+            {tab === 'predict' && <PredictTab />}
+          </main>
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
 </body>
 </html>
