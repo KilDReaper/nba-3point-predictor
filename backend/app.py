@@ -15,9 +15,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -- Load model artifacts --
-MODEL_DIR = Path("ml/models")
-DATA_PATH = Path("ml/data/processed/features.csv")
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+MODEL_DIR = BASE_DIR / "ml" / "models"
+DATA_PATH = BASE_DIR / "ml" / "data" / "processed" / "features.csv"
 
 with open(MODEL_DIR / "forecaster_model.pkl", "rb") as f:
     model = pickle.load(f)
