@@ -1,59 +1,39 @@
-import { useEffect, useState } from "react";
-import api from "./services/api";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import Home from "./pages/Home";
+import Player from "./pages/Player";
+import Predict from "./pages/Predict";
+import ShotPredictor from "./pages/ShotPredictor";
+import NotFound from "./pages/NotFound";
 
 function App() {
-  const [modelInfo, setModelInfo] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api
-      .get("/model-info")
-      .then((res) => {
-        setModelInfo(res.data);
-      })
-      .catch((err) => {
-        console.error(err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
-
-  if (loading) {
-    return <h1>Loading...</h1>;
-  }
-
   return (
-    <div style={{ padding: "40px", color: "white" }}>
-      <h1>🏀 NBA 3PT Predictor</h1>
-
-      <h2>Backend Connected ✅</h2>
-
-      <p>
-        <strong>Model:</strong> {modelInfo.model_type}
-      </p>
-
-      <p>
-        <strong>MAE:</strong> {modelInfo.mae}
-      </p>
-
-      <p>
-        <strong>R²:</strong> {modelInfo.r2}
-      </p>
-
-      <p>
-        <strong>Training Seasons:</strong> {modelInfo.seasons}
-      </p>
-
-      <p>
-        <strong>Training Rows:</strong> {modelInfo.training_rows}
-      </p>
-
-      <p>
-        <strong>Features:</strong> {modelInfo.features.length}
-      </p>
-    </div>
+    <BrowserRouter>
+      <Navbar />
+      <main className="container" style={styles.main}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/player" element={<Player />} />
+          <Route path="/predict" element={<Predict />} />
+          <Route path="/court" element={<ShotPredictor />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </main>
+      <Footer />
+    </BrowserRouter>
   );
 }
+
+const styles = {
+  main: {
+    flex: 1,
+    width: "100%",
+    maxWidth: "1200px",
+    margin: "0 auto",
+    padding: "32px 24px",
+    boxSizing: "border-box",
+  }
+};
 
 export default App;

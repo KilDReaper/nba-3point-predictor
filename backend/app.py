@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pandas as pd
@@ -26,6 +26,22 @@ with open(MODEL_DIR / "team_encoder.pkl", "rb") as f:
     team_encoder = pickle.load(f)
 with open(MODEL_DIR / "feature_list.pkl", "rb") as f:
     feature_list = pickle.load(f)
+
+# Set up sys.path to resolve 'scripts' module from ml/
+import sys
+sys.path.insert(0, str(Path("ml").resolve()))
+
+# Load shot-level model safely using joblib
+try:
+    import joblib
+    with open(MODEL_DIR / "best_model.pkl", "rb") as f:
+        shot_model = joblib.load(f)
+    shot_model_loaded = True
+    print("Shot-level ML model loaded successfully!")
+except Exception as e:
+    print(f"Warning: Could not load shot-level model: {e}")
+    shot_model = None
+    shot_model_loaded = False
 
 df = pd.read_csv(DATA_PATH)
 df["team_encoded"] = team_encoder.transform(
@@ -139,3 +155,91 @@ def predict(req: PredictRequest):
         "predicted_fg3_pct_percent": round(prediction * 100, 1),
         "input": req.model_dump(),
     }
+
+class ShotPredictRequest(BaseModel):
+    shotDistance: float
+    shotZone: str
+    period: int
+    minutesRemaining: float
+    secondsRemaining: float
+    shotClock: float
+    defenderDistance: float
+    dribbles: float
+    touchTime: float
+    locationX: float
+    locationY: float
+
+@app.post("/predict-shot")
+def predict_shot(req: ShotPredictRequest):
+    if not shot_model_loaded or shot_model is None:
+        # Fallback to intelligent basketball physics heuristic
+        prob = 0.36
+        
+        dist = req.shotDistance
+        if dist > 23.75:
+            prob -= (dist - 23.75) * 0.02
+        elif dist < 22.0:
+            prob += 0.05
+            
+        def_dist = req.defenderDistance
+        if def_dist >= 6.0:
+            prob += 0.06
+        elif def_dist <= 2.0:
+            prob -= 0.10
+        else:
+            prob += (def_dist - 4.0) * 0.02
+            
+        sc = req.shotClock
+        if sc <= 4.0:
+            prob -= (4.0 - sc) * 0.03
+        elif sc >= 18.0:
+            prob += 0.02
+            
+        drib = req.dribbles
+        if drib == 0:
+            prob += 0.03
+        elif drib > 3:
+            prob -= (drib - 3) * 0.015
+            
+        tt = req.touchTime
+        if tt > 6.0:
+            prob -= 0.03
+            
+        prob = max(0.10, min(0.75, prob))
+        prediction = "Made" if prob >= 0.43 else "Missed"
+        
+        return {
+            "prediction": prediction,
+            "probability": round(prob, 3),
+            "probability_percent": round(prob * 100, 1),
+            "fallback": True,
+            "message": "Heuristic fallback prediction (Shot-level ML model not loaded on server)"
+        }
+
+    try:
+        from scripts.preprocessing import prepare_prediction_frame
+        frame = prepare_prediction_frame(
+            shotDistance=req.shotDistance,
+            shotZone=req.shotZone,
+            period=req.period,
+            minutesRemaining=req.minutesRemaining,
+            secondsRemaining=req.secondsRemaining,
+            shotClock=req.shotClock,
+            defenderDistance=req.defenderDistance,
+            dribbles=req.dribbles,
+            touchTime=req.touchTime,
+            locationX=req.locationX,
+            locationY=req.locationY,
+        )
+        
+        probability = float(shot_model.predict_proba(frame)[0, 1])
+        prediction = "Made" if probability >= 0.5 else "Missed"
+        
+        return {
+            "prediction": prediction,
+            "probability": round(probability, 3),
+            "probability_percent": round(probability * 100, 1),
+            "fallback": False
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Shot prediction error: {str(e)}")
