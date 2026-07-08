@@ -44,6 +44,10 @@ function PredictionCard({ result }) {
           </thead>
           <tbody>
             <tr style={styles.tr}>
+              <td style={styles.td}>Team</td>
+              <td style={styles.tdRight}>{result.input.team}</td>
+            </tr>
+            <tr style={styles.tr}>
               <td style={styles.td}>Last Season 3PT%</td>
               <td style={styles.tdRight}>
                 {(result.input.fg3_pct_last_season * 100).toFixed(1)}%

@@ -1,0 +1,21 @@
+# Python
+venv/
+.venv/
+backend/venv/
+backend/.venv/
+
+__pycache__/
+*.pyc
+
+# Model files (if large)
+*.pkl
+*.joblib
+
+# VS Code
+.vscode/
+
+# Node
+node_modules/
+
+# Environment variables
+.env

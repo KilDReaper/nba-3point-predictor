@@ -36,8 +36,11 @@ function Player() {
       });
   };
 
-  const isElite = playerData && playerData.history.length > 0 && 
-    playerData.history[playerData.history.length - 1].predicted_fg3_pct >= 0.38;
+  const latestHistory = playerData?.history?.[playerData.history.length - 1];
+  const nextSeasonPrediction = playerData?.next_season_prediction;
+
+  const isElite = latestHistory && latestHistory.predicted_fg3_pct >= 0.38;
+  const isEliteNext = nextSeasonPrediction && nextSeasonPrediction.predicted_fg3_pct >= 0.38;
 
   return (
     <motion.div 
@@ -117,6 +120,18 @@ function Player() {
                       </tr>
                     );
                   })}
+                  {nextSeasonPrediction && (
+                    <tr style={{ ...styles.tr, ...styles.projectedRow }}>
+                      <td style={styles.td}>Projected {nextSeasonPrediction.season}</td>
+                      <td style={styles.td}>N/A</td>
+                      <td style={{ ...styles.td, color: "var(--court-gold)", fontWeight: 600 }}>
+                        {nextSeasonPrediction.predicted_fg3_pct_percent.toFixed(1)}%
+                      </td>
+                      <td style={styles.td}>N/A</td>
+                      <td style={styles.td}>{latestHistory?.fg3a_per_game ?? "N/A"}</td>
+                      <td style={styles.td}>{latestHistory?.games_played ?? "N/A"}</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -129,7 +144,7 @@ function Player() {
               <div style={styles.summaryRow}>
                 <div>
                   <div style={styles.summaryValue} className="text-mono">
-                    {(playerData.history[playerData.history.length - 1].predicted_fg3_pct * 100).toFixed(1)}%
+                    {(latestHistory.predicted_fg3_pct * 100).toFixed(1)}%
                   </div>
                   <div style={styles.summaryLabel}>LATEST XGBOOST SEASON REGRESSION</div>
                 </div>
@@ -143,6 +158,27 @@ function Player() {
                 </div>
               </div>
             </div>
+
+            {nextSeasonPrediction && (
+              <div className={`sports-card ${isEliteNext ? "made" : "primary"}`} style={styles.projectionCard}>
+                <div style={styles.cardHeader}>
+                  <h3 style={styles.sectionTitle}>Next Season Forecast</h3>
+                  <span style={styles.seasonsCount}>{nextSeasonPrediction.source_season}</span>
+                </div>
+                <div style={styles.projectionRow}>
+                  <div>
+                    <div style={styles.projectionValue} className="text-mono">
+                      {nextSeasonPrediction.predicted_fg3_pct_percent.toFixed(1)}%
+                    </div>
+                    <div style={styles.projectionLabel}>{nextSeasonPrediction.season}</div>
+                  </div>
+                  <div style={styles.projectionMeta}>
+                    <div style={styles.projectionMetaLabel}>Based on latest season form</div>
+                    <div style={styles.projectionMetaValue}>{nextSeasonPrediction.source_season}</div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Recharts graph panel */}
             <div className="sports-card" style={styles.chartCard}>
@@ -259,6 +295,10 @@ const styles = {
     padding: "20px",
     boxSizing: "border-box",
   },
+  projectionCard: {
+    padding: "20px",
+    boxSizing: "border-box",
+  },
   summaryRow: {
     display: "flex",
     justifyContent: "space-between",
@@ -293,9 +333,46 @@ const styles = {
     color: "var(--text-muted)",
     marginTop: "4px",
   },
+  projectionRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    gap: "16px",
+  },
+  projectionValue: {
+    fontSize: "2.4rem",
+    fontWeight: 700,
+    color: "var(--court-gold)",
+    lineHeight: 1,
+  },
+  projectionLabel: {
+    fontFamily: "var(--heading)",
+    fontSize: "0.75rem",
+    letterSpacing: "0.05em",
+    color: "var(--text-muted)",
+    marginTop: "4px",
+  },
+  projectionMeta: {
+    textAlign: "right",
+  },
+  projectionMetaLabel: {
+    fontSize: "0.72rem",
+    color: "var(--text-muted)",
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+  },
+  projectionMetaValue: {
+    fontFamily: "var(--heading)",
+    fontSize: "0.95rem",
+    color: "#fff",
+    marginTop: "4px",
+  },
   chartCard: {
     padding: "20px",
     boxSizing: "border-box",
+  },
+  projectedRow: {
+    background: "rgba(255, 149, 0, 0.04)",
   }
 };
 

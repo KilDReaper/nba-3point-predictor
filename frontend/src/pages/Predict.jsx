@@ -28,6 +28,7 @@ const IMPORTANCES = [
 
 function Predict() {
   const [form, setForm] = useState({
+    team: "GSW",
     fg3_pct_last_season: 0.370,
     fg3a_per_game: 6.0,
     games_played: 70,

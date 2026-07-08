@@ -29,7 +29,7 @@ with open(MODEL_DIR / "feature_list.pkl", "rb") as f:
 
 # Set up sys.path to resolve 'scripts' module from ml/
 import sys
-sys.path.insert(0, str(Path("ml").resolve()))
+sys.path.insert(0, str((BASE_DIR / "ml").resolve()))
 
 # Load shot-level model safely using joblib
 try:
@@ -49,6 +49,112 @@ df["team_encoded"] = team_encoder.transform(
         lambda x: x if x in team_encoder.classes_ else "UNK"
     )
 )
+
+PLAYER_BASELINES = (
+    df.groupby("PLAYER_NAME")[["target_fg3_pct", "fg3_pct_career_avg", "fg3a_per_game"]]
+    .mean(numeric_only=True)
+    .round(4)
+    .to_dict(orient="index")
+)
+LEAGUE_BASELINE = float(df["target_fg3_pct"].mean())
+
+
+def get_player_adjustment(player_name: str) -> tuple[float, dict[str, float]]:
+    profile = PLAYER_BASELINES.get(player_name)
+    if not profile:
+        return 0.0, {}
+
+    skill_anchor = float(profile.get("fg3_pct_career_avg", LEAGUE_BASELINE))
+    volume_anchor = float(profile.get("fg3a_per_game", 0.0))
+
+    skill_delta = skill_anchor - LEAGUE_BASELINE
+    volume_delta = min(max((volume_anchor - 6.0) / 10.0, -0.15), 0.15)
+    adjustment = (skill_delta * 0.85) + (volume_delta * 0.25)
+
+    return adjustment, {
+        "career_avg": round(skill_anchor, 4),
+        "volume_per_game": round(volume_anchor, 2),
+        "adjustment": round(adjustment, 4),
+    }
+
+
+def safe_float(value: object, default: float = 0.0) -> float:
+    if value is None:
+        return default
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return default
+    if pd.isna(numeric):
+        return default
+    return numeric
+
+
+def get_next_season_label(season: object) -> str:
+    season_text = str(season)
+    try:
+        start_year = int(season_text.split("-")[0])
+        return f"{start_year + 1}-{str(start_year + 2)[-2:]}"
+    except (TypeError, ValueError, IndexError):
+        return f"{season_text} (Next)"
+
+
+def build_next_season_features(player: pd.DataFrame) -> dict[str, float]:
+    latest_row = player.iloc[-1]
+    previous_row = player.iloc[-2] if len(player) > 1 else latest_row
+
+    last_actual = safe_float(latest_row.get("target_fg3_pct", latest_row.get("fg3_pct_lag1", 0.0)))
+    prev_actual = safe_float(previous_row.get("target_fg3_pct", previous_row.get("fg3_pct_lag1", last_actual)))
+    career_avg = safe_float(player["target_fg3_pct"].mean(), last_actual)
+    attempts_per_game = safe_float(latest_row.get("fg3a_per_game", latest_row.get("fg3a_lag1", 0.0)))
+    games_played = safe_float(latest_row.get("GP", latest_row.get("gp_lag1", 0.0)))
+    minutes_per_game = safe_float(latest_row.get("MIN", 0.0))
+    usage_rate = safe_float(latest_row.get("USG_PCT", 0.0))
+    assists = safe_float(latest_row.get("AST", 0.0))
+    turnovers = safe_float(latest_row.get("TOV", 0.0))
+    field_goal_pct = safe_float(latest_row.get("FG_PCT", 0.0))
+    free_throw_pct = safe_float(latest_row.get("FT_PCT", 0.0))
+    team_abbreviation = str(latest_row.get("TEAM_ABBREVIATION", "UNK"))
+    team = team_abbreviation if team_abbreviation in team_encoder.classes_ else "UNK"
+
+    return {
+        "fg3_pct_lag1": last_actual,
+        "fg3_pct_lag2": prev_actual,
+        "fg3_pct_trend": last_actual - prev_actual,
+        "fg3_pct_career_avg": career_avg,
+        "fg3a_lag1": attempts_per_game,
+        "fg3a_per_game": attempts_per_game,
+        "high_volume": int(attempts_per_game >= 5),
+        "GP": games_played,
+        "MIN": minutes_per_game,
+        "USG_PCT": usage_rate,
+        "AST": assists,
+        "TOV": turnovers,
+        "FG_PCT": field_goal_pct,
+        "FT_PCT": free_throw_pct,
+        "gp_lag1": games_played,
+        "seasons_in_league": safe_float(latest_row.get("seasons_in_league", len(player) - 1)) + 1,
+        "team": team,
+    }
+
+
+def predict_next_season(player: pd.DataFrame) -> dict[str, object]:
+    next_features = build_next_season_features(player)
+    team = next_features.pop("team")
+    team_enc = int(team_encoder.transform([team])[0])
+
+    row = pd.DataFrame([{feature: next_features.get(feature, 0) for feature in feature_list}])
+    row["team_encoded"] = team_enc
+
+    prediction = float(model.predict(row)[0])
+    latest_season = player["SEASON"].iloc[-1]
+
+    return {
+        "season": get_next_season_label(latest_season),
+        "source_season": latest_season,
+        "predicted_fg3_pct": round(prediction, 3),
+        "predicted_fg3_pct_percent": round(prediction * 100, 1),
+    }
 
 # -- Schemas --
 class PredictRequest(BaseModel):
@@ -71,13 +177,18 @@ def health():
 
 @app.get("/model-info")
 def model_info():
+    available_features = [feature for feature in feature_list if feature in df.columns]
+    cleaned = df.dropna(subset=available_features + ["target_fg3_pct"])
+    test_seasons = ["2022-23", "2023-24"]
+    test_mask = cleaned["SEASON"].isin(test_seasons)
+
     return {
         "model_type": "XGBoost Regressor",
         "mae": 0.0276,
-        "r2": 0.3031,
-        "training_rows": 1222,
-        "test_rows": 488,
-        "seasons": "2014-15 to 2023-24",
+        "r2": 0.2763,
+        "training_rows": int((~test_mask).sum()),
+        "test_rows": int(test_mask.sum()),
+        "seasons": f"{df['SEASON'].min()} to {df['SEASON'].max()}",
         "features": feature_list,
     }
 
@@ -119,12 +230,14 @@ def get_player(player_name: str):
         "player": player["PLAYER_NAME"].iloc[0],
         "seasons": len(history),
         "history": history,
+        "next_season_prediction": predict_next_season(player),
     }
 
 @app.post("/predict")
 def predict(req: PredictRequest):
     # Encode team
-    team = req.team if req.team in team_encoder.classes_ else "UNK"
+    default_team = str(team_encoder.classes_[0])
+    team = req.team if req.team in team_encoder.classes_ else default_team
     team_enc = int(team_encoder.transform([team])[0])
 
     input_data = {
@@ -153,10 +266,12 @@ def predict(req: PredictRequest):
     return {
         "predicted_fg3_pct": round(prediction, 3),
         "predicted_fg3_pct_percent": round(prediction * 100, 1),
+        "resolved_team": team,
         "input": req.model_dump(),
     }
 
 class ShotPredictRequest(BaseModel):
+    playerName: str = "Stephen Curry"
     shotDistance: float
     shotZone: str
     period: int
@@ -171,6 +286,8 @@ class ShotPredictRequest(BaseModel):
 
 @app.post("/predict-shot")
 def predict_shot(req: ShotPredictRequest):
+    player_adjustment, player_profile = get_player_adjustment(req.playerName)
+
     if not shot_model_loaded or shot_model is None:
         # Fallback to intelligent basketball physics heuristic
         prob = 0.36
@@ -204,6 +321,8 @@ def predict_shot(req: ShotPredictRequest):
         tt = req.touchTime
         if tt > 6.0:
             prob -= 0.03
+
+        prob += player_adjustment
             
         prob = max(0.10, min(0.75, prob))
         prediction = "Made" if prob >= 0.43 else "Missed"
@@ -213,6 +332,8 @@ def predict_shot(req: ShotPredictRequest):
             "probability": round(prob, 3),
             "probability_percent": round(prob * 100, 1),
             "fallback": True,
+            "playerName": req.playerName,
+            "playerProfile": player_profile,
             "message": "Heuristic fallback prediction (Shot-level ML model not loaded on server)"
         }
 
@@ -232,14 +353,17 @@ def predict_shot(req: ShotPredictRequest):
             locationY=req.locationY,
         )
         
-        probability = float(shot_model.predict_proba(frame)[0, 1])
+        probability = float(shot_model.predict_proba(frame)[0, 1]) + player_adjustment
+        probability = float(np.clip(probability, 0.0, 1.0))
         prediction = "Made" if probability >= 0.5 else "Missed"
         
         return {
             "prediction": prediction,
             "probability": round(probability, 3),
             "probability_percent": round(probability * 100, 1),
-            "fallback": False
+            "fallback": False,
+            "playerName": req.playerName,
+            "playerProfile": player_profile,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Shot prediction error: {str(e)}")

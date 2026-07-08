@@ -1,5 +1,11 @@
 import React from "react";
 
+const TEAM_OPTIONS = [
+  "ATL", "BKN", "BOS", "CHA", "CHI", "CLE", "DAL", "DEN", "DET", "GSW",
+  "HOU", "IND", "LAC", "LAL", "MEM", "MIA", "MIL", "MIN", "NOP", "NYK",
+  "OKC", "ORL", "PHI", "PHX", "POR", "SAC", "SAS", "TOR", "UTA", "WAS",
+];
+
 function PredictionForm({ form, onChange, onSubmit, loading }) {
   const updateVal = (key, val) => {
     onChange(key, parseFloat(val) || 0);
@@ -33,6 +39,30 @@ function PredictionForm({ form, onChange, onSubmit, loading }) {
   return (
     <div className="sports-card" style={styles.card}>
       <div style={styles.title}>Simulate Player Parameters</div>
+
+      <fieldset style={styles.fieldset}>
+        <legend style={styles.legend}>TEAM CONTEXT</legend>
+        <div style={styles.formGroup}>
+          <div style={styles.labelRow}>
+            <label style={styles.label}>Team</label>
+            <span className="form-value-badge" style={styles.badge}>
+              {form.team}
+            </span>
+          </div>
+          <select
+            className="form-input"
+            value={form.team}
+            onChange={(e) => onChange("team", e.target.value)}
+            style={styles.select}
+          >
+            {TEAM_OPTIONS.map((team) => (
+              <option key={team} value={team}>
+                {team}
+              </option>
+            ))}
+          </select>
+        </div>
+      </fieldset>
       
       <fieldset style={styles.fieldset}>
         <legend style={styles.legend}>SHOOTING PROFILE</legend>
@@ -115,6 +145,14 @@ const styles = {
     fontSize: "0.78rem",
     color: "var(--text-main)",
     fontWeight: 600,
+  },
+  select: {
+    width: "100%",
+    padding: "8px 12px",
+    background: "#08090c",
+    border: "1px solid var(--border-color)",
+    borderRadius: "4px",
+    color: "#fff",
   },
   submitBtn: {
     marginTop: "4px",

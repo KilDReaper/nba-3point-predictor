@@ -2,8 +2,8 @@ import React from "react";
 
 function Hero({ modelInfo }) {
   const maePercent = modelInfo ? (modelInfo.mae * 100).toFixed(2) + "%" : "2.76%";
-  const r2Value = modelInfo ? modelInfo.r2.toFixed(3) : "0.303";
-  const rows = modelInfo ? modelInfo.training_rows.toLocaleString() : "1,222";
+  const r2Value = modelInfo ? modelInfo.r2.toFixed(3) : "0.276";
+  const rows = modelInfo ? modelInfo.training_rows.toLocaleString() : "1,818";
   const type = modelInfo ? modelInfo.model_type : "XGBoost Regressor";
 
   return (

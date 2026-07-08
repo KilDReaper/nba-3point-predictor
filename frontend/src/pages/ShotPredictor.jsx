@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import api from "../services/api";
 import { FaBasketballBall } from "react-icons/fa";
 
+const PLAYER_OPTIONS = ["Stephen Curry", "Klay Thompson", "Damian Lillard", "James Harden"];
+
 // Helper: Map click to NBA court space coordinate & determine Shot Zone
 const calculateShotDetails = (svgX, svgY) => {
   // SVG Y is from 0 to 470. Basketball Hoop is at Y = 90 (which maps to Y = 0 in NBA coords).
@@ -34,6 +36,7 @@ const calculateShotDetails = (svgX, svgY) => {
 };
 
 function ShotPredictor() {
+  const [selectedPlayer, setSelectedPlayer] = useState(PLAYER_OPTIONS[0]);
   const [clickCoords, setClickCoords] = useState(null);
   const [shotStats, setShotStats] = useState({
     locationX: 0.0,
@@ -88,6 +91,7 @@ function ShotPredictor() {
     setError("");
 
     const requestData = {
+      playerName: selectedPlayer,
       shotDistance: shotStats.shotDistance,
       shotZone: shotStats.shotZone,
       period: situational.period,
@@ -205,6 +209,22 @@ function ShotPredictor() {
             <span style={styles.hudBadge}>CLICK CANVAS TO SELECT SHOT SPOT</span>
           </div>
 
+          <div style={styles.playerContext}>
+            <label style={styles.inputLabel}>Shot being predicted for</label>
+            <select
+              className="form-input"
+              value={selectedPlayer}
+              onChange={(e) => setSelectedPlayer(e.target.value)}
+              style={styles.playerSelect}
+            >
+              {PLAYER_OPTIONS.map((player) => (
+                <option key={player} value={player}>
+                  {player}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <svg className="court-svg" viewBox="0 0 500 470" onClick={handleCourtClick}>
             {/* Paint Lane */}
             <rect x="170" y="50" width="160" height="190" className="court-paint" />
@@ -276,6 +296,10 @@ function ShotPredictor() {
           <div className="sports-card" style={styles.resultPanel}>
             <div style={styles.cardHeader}>
               <h3 style={styles.sectionTitle}>Outcome Probability HUD</h3>
+            </div>
+
+            <div style={styles.playerBadge} className="text-mono">
+              {selectedPlayer}
             </div>
             
             {prediction ? (
@@ -445,6 +469,10 @@ const styles = {
     flexDirection: "column",
     alignItems: "center",
     boxSizing: "border-box",
+  },
+  playerContext: {
+    width: "100%",
+    marginBottom: "16px",
   },
   cardHeader: {
     display: "flex",
@@ -621,6 +649,27 @@ const styles = {
     fontSize: "0.75rem",
     color: "var(--text-muted)",
     marginBottom: "4px",
+  },
+  playerSelect: {
+    width: "100%",
+    padding: "8px 12px",
+    background: "#08090c",
+    border: "1px solid var(--border-color)",
+    borderRadius: "4px",
+    color: "#fff",
+  },
+  playerBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "4px 10px",
+    marginBottom: "12px",
+    borderRadius: "999px",
+    border: "1px solid rgba(245, 158, 11, 0.25)",
+    background: "rgba(245, 158, 11, 0.08)",
+    color: "var(--court-gold)",
+    fontSize: "0.78rem",
+    letterSpacing: "0.03em",
   },
   select: {
     width: "100%",
