@@ -1,0 +1,25 @@
+NBA shot-level model retrain report
+
+Data path: C:\Users\punte\Documents\aayam\nba-3point-predictor\ml\data\processed\synthesized_balanced_shots.csv
+Rows used: 4266
+Train rows: 3412
+Test rows: 854
+Positive rate: 0.5000
+Accuracy: 0.9426
+F1: 0.9431
+ROC-AUC: 0.9885
+
+Confusion matrix:
+[[399  28]
+ [ 21 406]]
+
+Classification report:
+              precision    recall  f1-score   support
+
+           0       0.95      0.93      0.94       427
+           1       0.94      0.95      0.94       427
+
+    accuracy                           0.94       854
+   macro avg       0.94      0.94      0.94       854
+weighted avg       0.94      0.94      0.94       854
+

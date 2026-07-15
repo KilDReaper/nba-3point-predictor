@@ -90,6 +90,7 @@ def prepare_prediction_frame(
     touchTime: float,
     locationX: float,
     locationY: float,
+    playerName: str = "Unknown",
 ) -> pd.DataFrame:
     frame = pd.DataFrame(
         {
@@ -102,8 +103,9 @@ def prepare_prediction_frame(
             "defenderDistance": [defenderDistance],
             "dribbles": [dribbles],
             "touchTime": [touchTime],
-            "locationX": [locationX],
-            "locationY": [locationY],
+            "locationX": [locationX * 10.0],
+            "locationY": [locationY * 10.0],
+            "playerName": [playerName],
         }
     )
     return frame

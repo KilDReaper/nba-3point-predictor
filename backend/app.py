@@ -351,6 +351,7 @@ def predict_shot(req: ShotPredictRequest):
             touchTime=req.touchTime,
             locationX=req.locationX,
             locationY=req.locationY,
+            playerName=req.playerName,
         )
         
         probability = float(shot_model.predict_proba(frame)[0, 1]) + player_adjustment

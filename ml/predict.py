@@ -20,6 +20,7 @@ def predict_three_point(
 	touchTime: float,
 	locationX: float,
 	locationY: float,
+	playerName: str = "Unknown",
 ) -> dict[str, Any]:
 	model = load_best_model()
 	frame = prepare_prediction_frame(
@@ -34,6 +35,7 @@ def predict_three_point(
 		touchTime=touchTime,
 		locationX=locationX,
 		locationY=locationY,
+		playerName=playerName,
 	)
 	probability = float(model.predict_proba(frame)[0, 1])
 	prediction = "Made" if probability >= 0.5 else "Missed"
@@ -53,6 +55,7 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument("--touchTime", type=float, required=True)
 	parser.add_argument("--locationX", type=float, required=True)
 	parser.add_argument("--locationY", type=float, required=True)
+	parser.add_argument("--playerName", type=str, default="Unknown")
 	return parser.parse_args()
 
 
@@ -70,6 +73,7 @@ def main() -> None:
 		touchTime=args.touchTime,
 		locationX=args.locationX,
 		locationY=args.locationY,
+		playerName=args.playerName,
 	)
 	print(json.dumps(result, indent=2))
 

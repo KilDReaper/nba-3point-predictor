@@ -63,7 +63,7 @@ def main():
 
     print(f"\nModel Performance:")
     print(f"  MAE:  {mae:.4f}  ({mae*100:.2f} percentage points)")
-    print(f"  R�:   {r2:.4f}")
+    print(f"  R^2:  {r2:.4f}")
 
     # Feature importance
     importance = pd.Series(model.feature_importances_, index=available_features)

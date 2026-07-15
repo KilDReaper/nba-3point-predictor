@@ -155,7 +155,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     working["courtDistance"] = np.sqrt(working["locationX"].fillna(0) ** 2 + working["locationY"].fillna(0) ** 2)
     working["lateGameShot"] = (working["gameTimeRemaining"] <= LATE_GAME_SECONDS_THRESHOLD).astype(int)
     working["cornerThree"] = (
-        (working["shotDistance"].fillna(0) >= 22.0)
+        (working["courtDistance"].fillna(0) >= 22.0)
         & (working["locationX"].fillna(0).abs() >= 22.0)
         & (working["locationY"].fillna(0).abs() <= 7.8)
     ).astype(int)
